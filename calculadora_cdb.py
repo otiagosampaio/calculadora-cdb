@@ -184,17 +184,15 @@ rendimento_liquido = montante_liquido - valor_investido
 # ===================== CÁLCULOS BENCHMARKS =====================
 taxa_cdi_anual = taxa_cdi / 100 
 taxa_poupanca_anual = 0.0617 # Proxy: 0.5% a.m. (6.17% a.a.)
-taxa_ibov_anual = 0.10 # Proxy: 10% a.a.
 
 # Taxas Diárias (Com base em 365 dias corridos para Benchmarks)
 taxa_cdi_diaria_corrida = (1 + taxa_cdi_anual)**(1/365) - 1
 taxa_poupanca_diaria_corrida = (1 + taxa_poupanca_anual)**(1/365) - 1
-taxa_ibov_diaria_corrida = (1 + taxa_ibov_anual)**(1/365) - 1
 
 # ===================== GRÁFICO (Streamlit) =====================
 st.markdown("### Projeção da Rentabilidade")
 datas_graf, bruto_graf = [], []
-bruto_cdi_graf, bruto_poupanca_graf, bruto_ibov_graf = [], [], [] 
+bruto_cdi_graf, bruto_poupanca_graf = [], [] 
 data_temp = data_aplicacao
 
 # Gera pontos do gráfico
@@ -212,11 +210,9 @@ for m in range(prazo_meses + 1):
     # Dados Benchmarks (compounding over calendar days 'dias')
     mont_cdi = valor_investido * (1 + taxa_cdi_diaria_corrida)**dias
     mont_poupanca = valor_investido * (1 + taxa_poupanca_diaria_corrida)**dias
-    mont_ibov = valor_investido * (1 + taxa_ibov_diaria_corrida)**dias
     
     bruto_cdi_graf.append(mont_cdi)
     bruto_poupanca_graf.append(mont_poupanca)
-    bruto_ibov_graf.append(mont_ibov)
     
     data_temp += relativedelta(months=1)
     if data_temp > data_vencimento:
@@ -229,7 +225,6 @@ if data_vencimento not in datas_graf:
     # Valores finais para benchmarks
     bruto_cdi_graf.append(valor_investido * (1 + taxa_cdi_diaria_corrida)**prazo_dias)
     bruto_poupanca_graf.append(valor_investido * (1 + taxa_poupanca_diaria_corrida)**prazo_dias)
-    bruto_ibov_graf.append(valor_investido * (1 + taxa_ibov_diaria_corrida)**prazo_dias)
 
 # Plotagem
 fig, ax = plt.subplots(figsize=(12, 6))
@@ -237,7 +232,6 @@ ax.plot(datas_graf, bruto_graf, label="CDB Bruto", color="#6B48FF", linewidth=2,
 # Novas linhas de Benchmarks
 ax.plot(datas_graf, bruto_cdi_graf, label="Benchmark: CDI", color="#FF5733", linestyle="--", linewidth=1.5)
 ax.plot(datas_graf, bruto_poupanca_graf, label="Benchmark: Poupança", color="#337AFF", linestyle=":", linewidth=1.5)
-ax.plot(datas_graf, bruto_ibov_graf, label="Benchmark: IBOV (Proxy 10% a.a.)", color="#FFC300", linestyle="-.", linewidth=1.5)
 
 
 ax.set_title("Projeção da Rentabilidade Bruta vs. Benchmarks", fontsize=16, pad=20)
@@ -251,7 +245,6 @@ dados_finais = [
     (montante_bruto, "#6B48FF", "CDB"),
     (bruto_cdi_graf[-1], "#FF5733", "CDI"),
     (bruto_poupanca_graf[-1], "#337AFF", "Poupança"),
-    (bruto_ibov_graf[-1], "#FFC300", "IBOV"),
 ]
 
 # Formatação auxiliar para anotação
@@ -548,7 +541,7 @@ def criar_pdf_perfeito():
     
     # Adicionando uma nota sobre os proxies de benchmarks
     nota_benchmarks = (
-        f"Benchmarks: CDI ({taxa_cdi:.2f}% a.a.), Poupança (Proxy 6.17% a.a.) e IBOV (Proxy 10.00% a.a.). "
+        f"Benchmarks: CDI ({taxa_cdi:.2f}% a.a.) e Poupança (Proxy 6.17% a.a.). " 
         "Projeção baseada em taxas atuais, podendo variar conforme mercado. Rentabilidades dos benchmarks são brutas (sem IR)."
     )
     
@@ -556,7 +549,7 @@ def criar_pdf_perfeito():
                            ParagraphStyle(name='GraphNote', fontSize=9, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=10*mm))) 
 
     # =========================================================================
-    # 11. BLOCO: COMPARAÇÃO DE RESULTADOS BRUTOS
+    # 11. BLOCO: COMPARAÇÃO DE RESULTADOS BRUTOS (Removido IBOV)
     # =========================================================================
     
     story.append(Paragraph("COMPARATIVO DE RESULTADOS BRUTOS (No Vencimento)", styles['SectionTitle'])) 
@@ -565,10 +558,9 @@ def criar_pdf_perfeito():
     valor_bruto_cdb = montante_bruto
     valor_bruto_cdi = bruto_cdi_graf[-1] 
     valor_bruto_poupanca = bruto_poupanca_graf[-1]
-    valor_bruto_ibov = bruto_ibov_graf[-1]
 
     # Determinando a cor de destaque (verde para o maior valor)
-    valores_comparacao = [valor_bruto_cdb, valor_bruto_cdi, valor_bruto_poupanca, valor_bruto_ibov]
+    valores_comparacao = [valor_bruto_cdb, valor_bruto_cdi, valor_bruto_poupanca]
     max_valor = max(valores_comparacao)
     
     # Função auxiliar para formatar com cor
@@ -578,14 +570,13 @@ def criar_pdf_perfeito():
                          ParagraphStyle(name='CompValue', alignment=1, fontName='Helvetica'))
 
     dados_comparacao = [
-        ["CDB (Simulado)", "CDI (Benchmark)", "Poupança (Benchmark)", "IBOV (Proxy)"],
+        ["CDB (Simulado)", "CDI (Benchmark)", "Poupança (Benchmark)"],
         [formatar_valor_comparacao(valor_bruto_cdb), 
          formatar_valor_comparacao(valor_bruto_cdi),
-         formatar_valor_comparacao(valor_bruto_poupanca),
-         formatar_valor_comparacao(valor_bruto_ibov)]
+         formatar_valor_comparacao(valor_bruto_poupanca)]
     ]
     
-    colWidths_comp = [total_width/4] * 4
+    colWidths_comp = [total_width/3] * 3
     t_comparacao = Table(dados_comparacao, colWidths=colWidths_comp)
     t_comparacao.hAlign = 'CENTER'
 
@@ -609,9 +600,9 @@ def criar_pdf_perfeito():
     # 12. Rodapé personalizado (Assessor)
     story.append(Paragraph(f"Simulação elaborada por <b>{nome_assessor}</b> em {data_simulacao.strftime('%d/%m/%Y')}", styles['Footer']))
 
-    # 13. NOVO: Disclaimer Legal com Título
+    # 13. Disclaimer Legal com Título
     
-    story.append(Spacer(1, 5*mm)) # Espaçamento entre rodapé do assessor e o título
+    story.append(Spacer(1, 5*mm)) 
     
     # Título do Disclaimer
     story.append(Paragraph("DISCLAIMER", styles['SectionTitle'])) 
