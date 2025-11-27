@@ -2,3 +2,5 @@ streamlit
 python-dateutil
 matplotlib
 reportlab
+Pillow
+requests
