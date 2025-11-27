@@ -329,14 +329,14 @@ def criar_pdf_perfeito():
         spaceAfter=5
     ))
     
-    # NOVO ESTILO: Disclaimer
+    # ESTILO: Disclaimer (corpo do texto)
     styles.add(ParagraphStyle(
         name='Disclaimer', 
         fontSize=7, 
         fontName='Helvetica-Oblique', # Itálico
         alignment=4, # Justificado
         textColor=colors.HexColor('#666666'), 
-        spaceBefore=5*mm, 
+        spaceBefore=3*mm, # Ajustado para encaixar melhor após o título
         spaceAfter=0*mm
     ))
     
@@ -606,14 +606,20 @@ def criar_pdf_perfeito():
     # Espaçamento antes do rodapé
     story.append(Spacer(1, 10*mm)) 
     
-    # 12. Rodapé personalizado
+    # 12. Rodapé personalizado (Assessor)
     story.append(Paragraph(f"Simulação elaborada por <b>{nome_assessor}</b> em {data_simulacao.strftime('%d/%m/%Y')}", styles['Footer']))
 
-    # 13. NOVO: Disclaimer Legal
+    # 13. NOVO: Disclaimer Legal com Título
+    
+    story.append(Spacer(1, 5*mm)) # Espaçamento entre rodapé do assessor e o título
+    
+    # Título do Disclaimer
+    story.append(Paragraph("DISCLAIMER", styles['SectionTitle'])) 
+    
+    # Texto do Disclaimer
     disclaimer_text = (
         "A Traders Distribuidora de Valores Mobiliários Ltda., com CNPJ sob o nº 62.280.490/0001-84 é uma instituição financeira autorizada a funcionar pelo Banco Central do Brasil, que atua como Participante de Negociação (PN) e realiza suas operações através de um Participante de Negociação Pleno (PNP), Terra Investimentos Ltda. Toda comunicação através da rede mundial de computadores está sujeita a interrupções ou atrasos, podendo impedir ou prejudicar o envio das ordens ou a recepção de informações atualizadas. Antes de tomar qualquer decisão de investimento, recomendamos que os investidores avaliem cuidadosamente seus objetivos financeiros e seu perfil de risco. A Traders DTVM exime-se de responsabilidade por danos sofridos por seus clientes, por força de falha de serviços disponibilizados por terceiros e não se responsabiliza por eventuais perdas financeiras decorrentes da negociação de ativos, nem garante a rentabilidade dos investimentos. O histórico de desempenho de qualquer ativo não assegura resultados futuros. A negociação em mercados financeiros está sujeita a volatilidade e pode envolver riscos significativos, incluindo, mas não se limitando ao risco de mercado, risco de liquidez e risco de crédito."
     )
-    story.append(Spacer(1, 5*mm)) # Pequeno espaçamento
     story.append(Paragraph(disclaimer_text, styles['Disclaimer']))
 
 
