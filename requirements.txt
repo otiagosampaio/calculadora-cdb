@@ -1,6 +1,7 @@
 streamlit
+streamlit-keyup
 python-dateutil
 matplotlib
 reportlab
-Pillow
 requests
+Pillow
