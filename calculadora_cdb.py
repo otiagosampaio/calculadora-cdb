@@ -5,8 +5,9 @@ import base64
 from io import BytesIO
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+# PageBreak adicionado aqui
 from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, HRFlowable
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, HRFlowable, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import mm
@@ -14,7 +15,7 @@ import requests
 from PIL import Image as PILImage
 from io import BytesIO as PIOBytesIO 
 
-# A biblioteca streamlit_keyup foi removida para resolver o ModuleNotFoundError.
+# A biblioteca streamlit_keyup foi removida
 import re
 
 # ===================== FUNÇÃO PARA LOGO COM PROPORÇÃO CORRETA =====================
@@ -109,7 +110,7 @@ with c1:
     # Máscara de entrada para Valor Investido
     st.markdown("Valor investido")
     
-    # >>> Substituição de st_keyup por st.text_input nativo <<<
+    # Substituição de st_keyup por st.text_input nativo
     valor_investido_str = st.text_input(
         label=" ", # Label vazio para usar o markdown acima
         value=st.session_state['valor_input'], 
@@ -118,7 +119,6 @@ with c1:
     )
     
     # Aplica a formatação na string e atualiza o estado
-    # Isso garante que o campo de input sempre mostra o valor formatado
     valor_formatado_display = formatar_moeda(valor_investido_str)
     
     # Atualiza a sessão para manter o valor formatado no campo de input no próximo rerun
@@ -498,23 +498,37 @@ def criar_pdf_perfeito():
     # Linha divisória após o Resultado Final
     story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=10)) 
 
-    # 9. FUNDAMENTOS DO CDB 
+    # 9. FUNDAMENTOS DO CDB (AJUSTADO PARA DOIS PARÁGRAFOS)
     story.append(Paragraph("FUNDAMENTOS DO CDB", styles['SectionTitle'])) 
     
-    fundamentos_texto = (
-        "O <b>CDB</b> é um título de renda fixa emitido por bancos. É uma escolha segura por contar com a "
-        "garantia do <b>FGC</b> (Fundo Garantidor de Créditos), que cobre até R$ 250.000 por CPF/instituição. "
-        "A <b>Rentabilidade</b> pode ser Pré-fixada ou Pós-fixada (atrelada ao CDI). "
-        "A <b>Liquidez</b> pode ser diária (reserva de emergência) ou no vencimento (maior retorno). "
-        "O <b>IR</b> é regressivo (menor imposto em prazos maiores), e o <b>IOF</b> é isento após 30 dias."
+    # Parágrafo 1: O que é CDB, FGC e Rentabilidade
+    fundamentos_texto_p1 = (
+        "O <b>CDB</b> (Certificado de Depósito Bancário) é um título de renda fixa emitido por bancos para "
+        "captar recursos. É considerado um investimento de baixo risco e conta com a garantia do "
+        "<b>FGC</b> (Fundo Garantidor de Créditos), que cobre até R$ 250.000 por CPF e por instituição financeira, "
+        "oferecendo segurança ao investidor. A rentabilidade pode ser **Pré-fixada** (taxa definida no início) "
+        "ou **Pós-fixada** (geralmente atrelada a um percentual do CDI)."
     )
+    story.append(Paragraph(fundamentos_texto_p1, styles['FundamentosStyle']))
+
+    story.append(Spacer(1, 3*mm)) 
+
+    # Parágrafo 2: Liquidez, IR e IOF
+    fundamentos_texto_p2 = (
+        "Em relação às características de resgate, a **Liquidez** do CDB pode ser diária (ideal para reserva de emergência) "
+        "ou apenas no vencimento (oferecendo historicamente maior retorno). A tributação segue a tabela regressiva do "
+        "<b>Imposto de Renda (IR)</b>, onde o imposto diminui quanto maior o prazo do investimento (chegando a 15% após 720 dias). "
+        "O <b>Imposto sobre Operações Financeiras (IOF)</b> é isento para resgates feitos após 30 dias."
+    )
+    story.append(Paragraph(fundamentos_texto_p2, styles['FundamentosStyle']))
     
-    story.append(Paragraph(fundamentos_texto, styles['FundamentosStyle']))
+    # Espaçamento final antes de forçar a quebra
+    story.append(Spacer(1, 5*mm)) 
     
-    # Espaçamento antes do gráfico
-    story.append(Spacer(1, 10*mm)) 
+    # >>> QUEBRA DE PÁGINA FORÇADA PARA LEVAR O GRÁFICO PARA PÁGINA 2 <<<
+    story.append(PageBreak()) 
     
-    # 10. PROJEÇÃO DA RENTABILIDADE (Gráfico com Benchmarks)
+    # 10. PROJEÇÃO DA RENTABILIDADE (Gráfico com Benchmarks) - AGORA NA PÁGINA 2
     story.append(Paragraph("PROJEÇÃO DA RENTABILIDADE BRUTA vs. BENCHMARKS", styles['SectionTitle']))
     
     # Adicionando o gráfico gerado
