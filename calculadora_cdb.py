@@ -6,7 +6,7 @@ import base64
 from io import BytesIO
 import plotly.graph_objects as go
 
-# ===================== CONFIGURAÇÃO + CACHE =====================
+# ===================== CONFIGURAÇÃO =====================
 st.set_page_config(page_title="Traders Corretora - CDB", layout="centered")
 
 # ===================== LOGO + TÍTULO =====================
@@ -75,7 +75,7 @@ ir = rendimento_apos_iof * (aliquota_ir/100)
 montante_liquido = investimento + rendimento_apos_iof - ir
 rendimento_liquido = montante_liquido - investimento
 
-# ===================== GRÁFICO (com captura automática) =====================
+# ===================== GRÁFICO =====================
 st.markdown("### Evolução do Investimento")
 
 datas, bruto_vals, liquido_vals = [], [], []
@@ -92,18 +92,9 @@ for m in range(prazo_meses + 1):
 
 fig = go.Figure()
 fig.add_trace(go.Scatter(x=datas, y=bruto_vals, name="Montante Bruto", line=dict(color="#6B48FF", width=5)))
-fig.add_trace(go.Scatter(x=datas, y=liquido_vals, name="Montante Líquido (após IR)", line=dict(color="#2E8B57", width=5, dash="dot")))
-fig.update_layout(
-    height=500,
-    hovermode="x unified",
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-    margin=dict(l=40, r=40, t=60, b=40),
-    template="simple_white",
-    title=None
-)
-
-# Exibe o gráfico no app
-chart = st.plotly_chart(fig, use_container_width=True)
+fig.add_trace(go.Scatter(x=datas, y=liquido_vals, name="Montante Líquido", line=dict(color="#2E8B57", width=5, dash="dot")))
+fig.update_layout(height=500, template="simple_white", hovermode="x unified")
+st.plotly_chart(fig, use_container_width=True)
 
 # ===================== RESULTADO =====================
 st.markdown("---")
@@ -114,11 +105,15 @@ col1.metric("Montante Bruto", brl(montante_bruto))
 col2.metric("Rendimento Bruto", brl(rendimento_bruto))
 col3.metric("Montante Líquido", brl(montante_liquido), delta=brl(rendimento_liquido))
 
+# ===================== FUNÇÃO PARA GERAR PNG DO GRÁFICO =====================
+@st.cache_data
+def grafico_para_png():
+    return fig.to_image(format="png", width=1000, height=500, scale=2)
+
 # ===================== GERAR PDF COM GRÁFICO =====================
-def criar_pdf_com_grafico():
+def criar_pdf():
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
 
     # Logo
     pdf.image("https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png", x=45, y=8, w=120)
@@ -128,6 +123,7 @@ def criar_pdf_com_grafico():
     pdf.set_font("Helvetica", "B", 20)
     pdf.set_text_color(107, 72, 255)
     pdf.cell(0, 15, "Proposta de Investimento - CDB", ln=True, align="C")
+
     pdf.set_text_color(0,0,0)
     pdf.set_font("Helvetica", size=12)
     pdf.ln(10)
@@ -140,19 +136,16 @@ def criar_pdf_com_grafico():
     pdf.set_font("Helvetica", "B", 14)
     pdf.cell(0, 10, "Resultado Final", ln=True)
     pdf.set_font("Helvetica", size=12)
-    pdf.cell(0, 8, f"Valor investido:       {brl(investimento)}", ln=True)
-    pdf.cell(0, 8, f"Montante Bruto:        {brl(montante_bruto)}", ln=True)
-    pdf.cell(0, 8, f"Montante Líquido:      {brl(montante_liquido)}", ln=True)
-    pdf.cell(0, 8, f"Rendimento líquido:    {brl(rendimento_liquido)}", ln=True)
-    pdf.cell(0, 8, f"Alíquota de IR:        {aliquota_ir}%", ln=True)
+    pdf.cell(0, 8, f"Valor investido:     {brl(investimento)}", ln=True)
+    pdf.cell(0, 8, f"Montante Bruto:      {brl(montante_bruto)}", ln=True)
+    pdf.cell(0, 8, f"Montante Líquido:    {brl(montante_liquido)}", ln=True)
+    pdf.cell(0, 8, f"Rendimento líquido:  {brl(rendimento_liquido)}", ln=True)
+    pdf.cell(0, 8, f"Alíquota IR:         {aliquota_ir}%", ln=True)
     pdf.ln(15)
 
-    # === GRÁFICO NO PDF (mágica!) ===
-    # Captura o gráfico que já foi renderizado
-    import time
-    time.sleep(2)  # espera o gráfico carregar
-    screenshot = chart.screenshot()
-    pdf.image(screenshot, x=10, y=None, w=190)
+    # GRÁFICO NO PDF
+    png_bytes = grafico_para_png()
+    pdf.image(BytesIO(png_bytes), x=10, y=None, w=190)
 
     # Rodapé
     pdf.set_y(-40)
@@ -167,14 +160,14 @@ def criar_pdf_com_grafico():
 # ===================== BOTÃO PDF =====================
 st.markdown("---")
 if st.button("GERAR PDF COM GRÁFICO", type="primary", use_container_width=True):
-    with st.spinner("Gerando seu PDF com gráfico..."):
-        pdf_data = criar_pdf_com_grafico()
+    with st.spinner("Gerando PDF com gráfico..."):
+        pdf_data = criar_pdf()
         b64 = base64.b64encode(pdf_data).decode()
         nome_arq = f"CDB_{nome_cliente.replace(' ', '_')}_{data_simulacao.strftime('%d%m%Y')}.pdf"
         href = f'<a href="data:application/pdf;base64,{b64}" download="{nome_arq}"><h3>BAIXAR PDF COM GRÁFICO</h3></a>'
         st.markdown(href, unsafe_allow_html=True)
         st.balloons()
-        st.success("PDF gerado com gráfico lindo!")
+        st.success("PDF com gráfico gerado com sucesso!")
 
 # ===================== RODAPÉ =====================
 st.markdown(
