@@ -125,7 +125,6 @@ def criar_pdf():
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.set_font("Helvetica", size=12)
 
     # Logo
     pdf.image("https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png", x=50, y=8, w=110)
@@ -159,12 +158,11 @@ def criar_pdf():
     fig.write_image(img_buffer, format="png")
     img_buffer.seek(0)
     pdf.image(img_buffer, x=10, y=None, w=190)
-    pdf.ln(100)
 
     # Rodapé
     pdf.set_y(-40)
     pdf.set_font("Helvetica", "I", 10)
-    pdf.cell(0, 10, "Traders Corretora • Assessoria de Investimentos", align="C")
+    pdf.cell(0, 10, "Traders Corretora - Assessoria de Investimentos", align="C")
 
     buffer = BytesIO()
     pdf.output(buffer)
@@ -173,19 +171,23 @@ def criar_pdf():
 
 # ===================== BOTÃO GERAR PDF =====================
 st.markdown("---")
-if st.button("Gerar PDF da Proposta", type="primary", use_container_width=True):
-    pdf_buffer = criar_pdf()
-    b64 = base64.b64encode(pdf_buffer.read()).decode()
-    href = f'<a href="data:application/pdf;base64,{b64}" download="Proposta_CDB_{nome_cliente.replace(" ", "_")}.pdf"><b>Clique aqui para baixar o PDF</b></a>'
-    st.markdown(href, unsafe_allow_html=True)
-    st.success("PDF gerado com sucesso! Clique no link acima para baixar.")
+if st.button("GERAR PDF DA PROPOSTA", type="primary", use_container_width=True):
+    with st.spinner("Gerando seu PDF..."):
+        pdf_buffer = criar_pdf()
+        b64 = base64.b64encode(pdf_buffer.read()).decode()
+        href = f'<a href="data:application/pdf;base64,{b64}" download="Proposta_CDB_{nome_cliente.replace(" ", "_")}.pdf"><b>BAIXAR PDF AGORA</b></a>'
+        st.markdown(href, unsafe_allow_html=True)
+        st.success("PDF gerado com sucesso!")
 
+# ===================== RODAPÉ =====================
 st.markdown(
-    """<div style="text-align:center; padding:30px; background:linear-gradient(135deg,#f5f0ff,#ede9ff); border-radius:20px; margin-top:40px;">
+    f"""
+    <div style="text-align:center; padding:30px; background:linear-gradient(135deg,#f5f0ff,#ede9ff); border-radius:20px; margin-top:40px;">
        <p style="font-size:18px;"><strong>Simulação elaborada por {nome_assessor}</strong><br>
        em <strong>{data_simulacao.strftime('%d/%m/%Y')}</strong> para <strong>{nome_cliente}</strong></p>
-       <p style="color:#6B48FF; font-size:22px; margin-top:20px;"><strong>Traders Corretora • Assessoria de Investimentos</strong></p>
-    </div>""".format(nome_assessor=nome_assessor, data_simulacao=data_simulacao, nome_cliente=nome_cliente),
+       <p style="color:#6B48FF; font-size:22px; margin-top:20px;"><strong>Traders Corretora - Assessoria de Investimentos</strong></p>
+    </div>
+    """,
     unsafe_allow_html=True
 )
 
