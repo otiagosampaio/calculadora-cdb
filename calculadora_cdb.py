@@ -84,7 +84,8 @@ st.markdown(
     </div>""",
     unsafe_allow_html=True
 )
-st.markdown("<h2 style='text-align: center; color: #222;'>Calculadora de CDB Pré e Pós-fixado</h2>", unsafe_allow_html=True)
+# 1. Título principal alterado para "Calculadora de Investimentos"
+st.markdown("<h2 style='text-align: center; color: #222;'>Calculadora de Investimentos</h2>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #666; font-size: 17px; margin-bottom: 30px;'>Simule rendimentos com a calculadora de CDB e descubra o retorno esperado para o cliente!</p>", unsafe_allow_html=True)
 st.markdown("---")
 
@@ -102,12 +103,13 @@ if 'valor_input' not in st.session_state:
 # ===================== DADOS DA SIMULAÇÃO (AJUSTADOS) =====================
 st.subheader("Dados da Simulação")
 c1, c2 = st.columns(2)
+
 with c1:
     nome_cliente = st.text_input("Nome do Cliente", "João Silva")
     nome_assessor = st.text_input("Nome do Assessor", "Seu Nome")
-    
-    # Máscara de entrada para Valor Investido
-    st.markdown("Valor investido")
+
+    # 2. Input de Valor Investido (Ajustado o label para aproximar do input)
+    st.markdown("Valor investido", unsafe_allow_html=True) # Usando markdown para o label
     
     # Substituição de st_keyup por st.text_input nativo
     valor_investido_str = st.text_input(
@@ -133,17 +135,17 @@ with c2:
     data_simulacao = st.date_input("Data da Simulação", datetime.date.today(), format="DD/MM/YYYY")
     tipo_cdb = st.selectbox("Tipo de CDB", ["Pré-fixado", "Pós-fixado (% do CDI)"])
 
-# ----------------- Taxa de Configuração Movida para DADOS DA SIMULAÇÃO -----------------
-# Verifica o tipo de CDB e exibe os inputs de taxa
-if tipo_cdb == "Pós-fixado (% do CDI)":
-    taxa_cdi = st.number_input("Taxa CDI anual (Benchmark) (%)", value=taxa_cdi_mercado, step=0.05)
-    perc_cdi = st.number_input("Percentual do CDI (%)", value=125.0, step=1.0)
-    taxa_anual = taxa_cdi * (perc_cdi / 100)
-    dias_ano = 252 # Dias úteis
-else:
-    taxa_anual = st.number_input("Taxa pré-fixada anual (%)", value=17.00, step=0.05)
-    dias_ano = 360 # Dias corridos/comerciais (convenção para prefixados)
-    perc_cdi = 0.0 # Valor não relevante para Pré-fixado
+    # 3. Input de Taxa Movido para a Coluna da Direita (C2)
+    # Verifica o tipo de CDB e exibe os inputs de taxa
+    if tipo_cdb == "Pós-fixado (% do CDI)":
+        taxa_cdi = st.number_input("Taxa CDI anual (Benchmark) (%)", value=taxa_cdi_mercado, step=0.05)
+        perc_cdi = st.number_input("Percentual do CDI (%)", value=125.0, step=1.0)
+        taxa_anual = taxa_cdi * (perc_cdi / 100)
+        dias_ano = 252 # Dias úteis
+    else:
+        taxa_anual = st.number_input("Taxa pré-fixada anual (%)", value=17.00, step=0.05)
+        dias_ano = 360 # Dias corridos/comerciais (convenção para prefixados)
+        perc_cdi = 0.0 # Valor não relevante para Pré-fixado
 
 st.markdown("---")
 
