@@ -71,7 +71,7 @@ with st.expander("Preferências do Investimento", expanded=True):
         taxa_anual = st.number_input("Taxa pré-fixada anual (%)", value=17.00, step=0.05)
         dias_ano = 360
 
-# ===================== CÁLCULOS =====================
+# ===================== CÁLCULOS CDB =====================
 prazo_meses = (data_vencimento.year - data_aplicacao.year)*12 + (data_vencimento.month - data_aplicacao.month)
 if data_vencimento.day < data_aplicacao.day: prazo_meses -= 1
 prazo_dias = (data_vencimento - data_aplicacao).days
@@ -92,9 +92,22 @@ ir = rendimento_apos_iof * (aliquota_ir/100)
 montante_liquido = valor_investido + rendimento_apos_iof - ir
 rendimento_liquido = montante_liquido - valor_investido
 
-# ===================== GRÁFICO =====================
+# ===================== CÁLCULOS BENCHMARKS =====================
+# Definindo taxas anuais (usando 365 dias para benchmarks de calendário)
+taxa_cdi_anual = taxa_cdi / 100 # Taxa CDI informada
+taxa_poupanca_anual = 0.0617 # Proxy: 0.5% a.m. (6.17% a.a.)
+taxa_ibov_anual = 0.10 # Proxy: 10% a.a.
+
+# Taxas Diárias (Com base em 365 dias corridos)
+taxa_cdi_diaria_corrida = (1 + taxa_cdi_anual)**(1/365) - 1
+taxa_poupanca_diaria_corrida = (1 + taxa_poupanca_anual)**(1/365) - 1
+taxa_ibov_diaria_corrida = (1 + taxa_ibov_anual)**(1/365) - 1
+
+# ===================== GRÁFICO (Streamlit) =====================
 st.markdown("### Projeção da Rentabilidade")
-datas_graf, bruto_graf, liquido_graf = [], [], []
+# Removida a lista 'liquido_graf'
+datas_graf, bruto_graf = [], []
+bruto_cdi_graf, bruto_poupanca_graf, bruto_ibov_graf = [], [], [] 
 data_temp = data_aplicacao
 
 # Gera pontos do gráfico
@@ -104,12 +117,20 @@ for m in range(prazo_meses + 1):
     if m == prazo_meses: dias = prazo_dias
         
     mont = valor_investido * (1 + taxa_diaria)**dias
-    rend = mont - valor_investido
-    ir_temp = rend * (0.225 if dias<=180 else 0.20 if dias<=360 else 0.175 if dias<=720 else 0.15)
     
+    # Dados CDB
     datas_graf.append(data_temp)
     bruto_graf.append(mont)
-    liquido_graf.append(valor_investido + rend - ir_temp)
+    # NÃO adiciona liquido_graf
+    
+    # Dados Benchmarks (compounding over calendar days 'dias')
+    mont_cdi = valor_investido * (1 + taxa_cdi_diaria_corrida)**dias
+    mont_poupanca = valor_investido * (1 + taxa_poupanca_diaria_corrida)**dias
+    mont_ibov = valor_investido * (1 + taxa_ibov_diaria_corrida)**dias
+    
+    bruto_cdi_graf.append(mont_cdi)
+    bruto_poupanca_graf.append(mont_poupanca)
+    bruto_ibov_graf.append(mont_ibov)
     
     data_temp += relativedelta(months=1)
     if data_temp > data_vencimento:
@@ -118,12 +139,23 @@ for m in range(prazo_meses + 1):
 if data_vencimento not in datas_graf:
     datas_graf.append(data_vencimento)
     bruto_graf.append(montante_bruto)
-    liquido_graf.append(montante_liquido)
+    
+    # Valores finais para benchmarks
+    bruto_cdi_graf.append(valor_investido * (1 + taxa_cdi_diaria_corrida)**prazo_dias)
+    bruto_poupanca_graf.append(valor_investido * (1 + taxa_poupanca_diaria_corrida)**prazo_dias)
+    bruto_ibov_graf.append(valor_investido * (1 + taxa_ibov_diaria_corrida)**prazo_dias)
 
+# Plotagem
 fig, ax = plt.subplots(figsize=(12, 6))
-ax.plot(datas_graf, bruto_graf, label="CDB Pré + Pós (Bruta)", color="#6B48FF", linewidth=2)
-ax.plot(datas_graf, liquido_graf, label="CDB Pré + Pós (Líquida)", color="#2E8B57", linewidth=2, linestyle="--")
-ax.set_title("Projeção da Rentabilidade", fontsize=16, pad=20)
+ax.plot(datas_graf, bruto_graf, label="CDB Bruto", color="#6B48FF", linewidth=2, alpha=0.9)
+# ax.plot(datas_graf, liquido_graf, label="CDB Líquido", color="#2E8B57", linewidth=2) # LINHA REMOVIDA
+# Novas linhas de Benchmarks
+ax.plot(datas_graf, bruto_cdi_graf, label="Benchmark: CDI", color="#FF5733", linestyle="--", linewidth=1.5)
+ax.plot(datas_graf, bruto_poupanca_graf, label="Benchmark: Poupança", color="#337AFF", linestyle=":", linewidth=1.5)
+ax.plot(datas_graf, bruto_ibov_graf, label="Benchmark: IBOV (Proxy 10% a.a.)", color="#FFC300", linestyle="-.", linewidth=1.5)
+
+
+ax.set_title("Projeção da Rentabilidade Bruta vs. Benchmarks", fontsize=16, pad=20)
 ax.set_ylabel("Valor em R$")
 ax.legend(fontsize=10, loc='upper left')
 ax.grid(True, alpha=0.3)
@@ -151,7 +183,7 @@ def grafico_png():
     buf.seek(0)
     return buf
 
-# ===================== PDF 100% IGUAL AO EXEMPLO (Final com Preferências Corrigidas) =====================
+# ===================== PDF 100% IGUAL AO EXEMPLO =====================
 def criar_pdf_perfeito():
     # 1. Configuração do Documento
     buffer = BytesIO()
@@ -365,7 +397,7 @@ def criar_pdf_perfeito():
     # Linha divisória após o Resultado Final
     story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=10)) 
 
-    # 9. FUNDAMENTOS DO CDB (Asteriscos ajustados para negrito)
+    # 9. FUNDAMENTOS DO CDB 
     story.append(Paragraph("FUNDAMENTOS DO CDB", styles['SectionTitle'])) 
     
     # Conteúdo de fundamentos com negrito ajustado
@@ -382,13 +414,22 @@ def criar_pdf_perfeito():
     # Espaçamento antes do gráfico
     story.append(Spacer(1, 10*mm)) 
     
-    # 10. PROJEÇÃO DA RENTABILIDADE (Gráfico)
-    story.append(Paragraph("PROJEÇÃO DA RENTABILIDADE", styles['SectionTitle']))
+    # 10. PROJEÇÃO DA RENTABILIDADE (Gráfico com Benchmarks)
+    story.append(Paragraph("PROJEÇÃO DA RENTABILIDADE BRUTA vs. BENCHMARKS", styles['SectionTitle']))
     
+    # É necessário gerar o gráfico novamente com as linhas de benchmarks dentro da função
+    # Para o PDF, usaremos a imagem gerada pelo Matplotlib com os benchmarks
     img = Image(grafico_png(), width=180*mm, height=90*mm)
     img.hAlign = 'CENTER'
     story.append(img)
-    story.append(Paragraph("Projeção baseada em taxas atuais, podendo variar conforme mercado", 
+    
+    # Adicionando uma nota sobre os proxies de benchmarks
+    nota_benchmarks = (
+        f"Benchmarks: CDI ({taxa_cdi:.2f}% a.a.), Poupança (Proxy 6.17% a.a.) e IBOV (Proxy 10.00% a.a.). "
+        "Projeção baseada em taxas atuais, podendo variar conforme mercado. Rentabilidades dos benchmarks são brutas (sem IR)."
+    )
+    
+    story.append(Paragraph(nota_benchmarks, 
                            ParagraphStyle(name='GraphNote', fontSize=9, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=20*mm)))
 
     # 11. Rodapé 
