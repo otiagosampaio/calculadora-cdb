@@ -36,8 +36,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 st.markdown("<h2 style='text-align: center; color: #222;'>Calculadora de CDB Pré e Pós-fixado</h2>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #666; font-size: 17px; margin-bottom: 30px;'>Simule os rendimentos com a calculadora de CDB e descubra o retorno esperado para o cliente!
-</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #666; font-size: 17px; margin-bottom: 30px;'>Simule rendimentos com a calculadora de CDB e descubra o retorno esperado para o cliente!</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ===================== DADOS DO CLIENTE =====================
