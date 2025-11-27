@@ -2,12 +2,12 @@ import streamlit as st
 import datetime
 from dateutil.relativedelta import relativedelta
 
-# ===================== CONFIGURAÇÃO DA PÁGINA =====================
-st.set_page_config(page_title="Traders Corretora - Calculadora CDB", layout="centered")
-
 # ===================== LOGO CENTRALIZADO E GRANDE =====================
 st.markdown("<h2 style='text-align: center; color: #222; margin-bottom: 5px;'>Calculadora de CDB Pré e Pós-fixado</h2>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #555; font-size: 16px; margin-bottom: 30px;'>Simulação personalizada de renda fixa com imposto de renda regressivo e IOF</p>", unsafe_allow_html=True)
+
+# ===================== CONFIGURAÇÃO DA PÁGINA =====================
+st.set_page_config(page_title="Traders Corretora - Calculadora CDB", layout="centered")
 
 # Logo centralizado e grande
 st.markdown(
