@@ -5,7 +5,7 @@ import base64
 from io import BytesIO
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from fpdf2 import FPDF  # <-- agora com suporte a Unicode
+from fpdf2 import FPDF  # <-- versão correta com suporte a Unicode
 
 # ===================== CONFIGURAÇÃO =====================
 st.set_page_config(page_title="Traders Corretora - CDB", layout="centered")
@@ -112,7 +112,7 @@ col1.metric("Montante Bruto", brl(montante_bruto))
 col2.metric("Rendimento Bruto", brl(rendimento_bruto))
 col3.metric("Montante Líquido", brl(montante_liquido), delta=brl(rendimento_liquido))
 
-# ===================== PDF PREMIUM COM FPDF2 + UNICODE =====================
+# ===================== PDF PREMIUM =====================
 def grafico_png():
     buf = BytesIO()
     plt.savefig(buf, format='png', dpi=300, bbox_inches='tight', facecolor='white')
@@ -136,10 +136,9 @@ class PDF(FPDF):
         self.set_text_color(100, 100, 100)
         self.cell(0, 10, "Traders Corretora • Assessoria de Investimentos", align="C")
 
-def criar_pdf_premium():
+def criar_pdf():
     pdf = PDF()
     pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
 
     # Cliente em destaque
     pdf.set_font("Helvetica", "B", 22)
@@ -150,7 +149,7 @@ def criar_pdf_premium():
     pdf.cell(0, 10, f"Simulação elaborada por {nome_assessor} • {data_simulacao.strftime('%d/%m/%Y')}", ln=True, align="C")
     pdf.ln(20)
 
-    # Caixa de resultados
+    # Resultados
     pdf.set_fill_color(248, 245, 255)
     pdf.set_draw_color(107, 72, 255)
     pdf.rect(15, pdf.get_y(), 180, 80, 'FD')
@@ -179,12 +178,6 @@ def criar_pdf_premium():
     png = grafico_png()
     pdf.image(png, x=15, y=None, w=180)
 
-    # Rodapé
-    pdf.set_y(-40)
-    pdf.set_font("Helvetica", "", 10)
-    pdf.set_text_color(120, 120, 120)
-    pdf.cell(0, 8, "Esta é uma simulação. Rentabilidade passada não é garantia de resultados futuros.", align="C")
-
     buffer = BytesIO()
     pdf.output(buffer)
     buffer.seek(0)
@@ -194,7 +187,7 @@ def criar_pdf_premium():
 st.markdown("---")
 if st.button("GERAR PROPOSTA PREMIUM (PDF)", type="primary", use_container_width=True):
     with st.spinner("Gerando sua proposta premium..."):
-        pdf_data = criar_pdf_premium()
+        pdf_data = criar_pdf()
         b64 = base64.b64encode(pdf_data).decode()
         nome_arq = f"Proposta_CDB_{nome_cliente.replace(' ', '_')}_{data_simulacao.strftime('%d%m%Y')}.pdf"
         href = f'<a href="data:application/pdf;base64,{b64}" download="{nome_arq}"><h3>BAIXAR PROPOSTA PREMIUM</h3></a>'
