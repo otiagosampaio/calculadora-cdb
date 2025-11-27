@@ -274,20 +274,26 @@ def criar_pdf_perfeito():
     story.append(t_prefs)
     
     # 6.2 Linha divisória para separar o bloco PREFERÊNCIAS
-    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=15)) # Reduzido spaceAfter para 15mm para o resumo caber
+    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=15))
 
-  # ===================== NOVO BLOCO: RESUMO DE CONTEÚDO (CAIXA DISCRETA) =====================
-# Corrigindo a definição para usar a string hexadecimal (necessária para a tag <font>)
-VERDE_RENTABILIDADE_STR = '#2E8B57' 
-CINZA_BORDA = colors.HexColor('#CCCCCC') # Mantido como HexColor para o GRID style
-VERDE_RENTABILIDADE_OBJ = colors.HexColor(VERDE_RENTABILIDADE_STR) # Apenas se precisarmos do objeto Color
+    ## ===================== NOVO BLOCO: RESUMO DE CONTEÚDO (CAIXA DISCRETA) =====================
+    # 🎯 CORREÇÃO: Definindo a cor como string para uso na tag <font>
+    VERDE_RENTABILIDADE_STR = '#2E8B57' 
+    CINZA_BORDA = colors.HexColor('#CCCCCC') 
 
-# 1. Montando a frase de resumo (usando a taxa correta baseada no tipo de CDB)
-# ... (código para definir meses, taxa_label, etc.)
-# ...
-
-# A linha crítica (295) corrigida:
-valor_liquido_formatado = f"<b><font color='{VERDE_RENTABILIDADE_STR}'>{brl_pdf(montante_liquido)}</font></b>"
+    # 1. Montando a frase de resumo (usando a taxa correta baseada no tipo de CDB)
+    meses = prazo_meses 
+    if tipo_cdb == "Pré-fixado":
+        taxa_label = f"{taxa_anual:.2f}% a.a."
+    else: # Pós-fixado
+        try:
+            # Tenta usar perc_cdi, se falhar, usa uma string placeholder
+            taxa_label = f"{perc_cdi:.2f}% do CDI"
+        except NameError:
+            taxa_label = f"Taxa de mercado ({taxa_anual:.2f}% a.a.)"
+            
+    # Usando VERDE_RENTABILIDADE_STR
+    valor_liquido_formatado = f"<b><font color='{VERDE_RENTABILIDADE_STR}'>{brl_pdf(montante_liquido)}</font></b>" 
     
     resumo_texto = f"Com um investimento inicial de **{brl_pdf(valor_investido)}** em um CDB com taxa de **{taxa_label}** por um período de **{meses} meses**, o valor líquido será de {valor_liquido_formatado}."
 
@@ -318,6 +324,7 @@ valor_liquido_formatado = f"<b><font color='{VERDE_RENTABILIDADE_STR}'>{brl_pdf(
 
     story.append(t_resumo)
     story.append(Spacer(1, 10*mm)) # Espaçamento antes do próximo título
+    ## =========================================================================================
 
     # 7. PROJEÇÃO DA RENTABILIDADE (Gráfico)
     story.append(Paragraph("PROJEÇÃO DA RENTABILIDADE", styles['SectionTitle']))
