@@ -158,11 +158,13 @@ def criar_pdf_perfeito():
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=15*mm, bottomMargin=15*mm, leftMargin=15*mm, rightMargin=15*mm)
     story = []
     
-    # 2. Estilos Personalizados
+   # 2. Estilos Personalizados (COM ESPAÇAMENTO AUMENTADO)
     styles = getSampleStyleSheet()
     AZUL_MARINHO_FUNDO = colors.HexColor("#0f172a") 
     
-    styles.add(ParagraphStyle(name='TitlePDF', fontSize=18, fontName='Helvetica-Bold', alignment=1, spaceAfter=2*mm, textColor=colors.HexColor('#000000')))
+    # 🎯 Ajuste: Aumentando spaceAfter para 7*mm
+    styles.add(ParagraphStyle(name='TitlePDF', fontSize=18, fontName='Helvetica-Bold', alignment=1, spaceAfter=7*mm, textColor=colors.HexColor('#000000')))
+    
     styles.add(ParagraphStyle(name='SubTitlePDF', fontSize=10, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=10*mm)) 
     
     # Estilo do título de seção para alinhar à esquerda
