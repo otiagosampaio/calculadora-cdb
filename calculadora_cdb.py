@@ -14,6 +14,10 @@ import requests
 from PIL import Image as PILImage
 from io import BytesIO as PIOBytesIO 
 
+# Necessário para a máscara de input
+from streamlit_keyup import st_keyup
+import re
+
 # ===================== FUNÇÃO PARA LOGO COM PROPORÇÃO CORRETA =====================
 def carregar_logo():
     # URL da logo da Traders
@@ -25,6 +29,45 @@ def carregar_logo():
     largura_desejada = 200 
     altura_calculada = largura_desejada * proporcao
     return Image(PIOBytesIO(response.content), width=largura_desejada, height=altura_calculada)
+
+# ===================== FUNÇÃO DE FORMATAÇÃO MONETÁRIA (NOVA) =====================
+def formatar_moeda(valor_str):
+    # Remove tudo que não for número (exceto vírgula)
+    valor_limpo = re.sub(r'[^\d,]', '', valor_str)
+    
+    # Substitui a vírgula por ponto (para facilitar o float)
+    if ',' in valor_limpo:
+        # Pega a parte inteira e a parte decimal
+        partes = valor_limpo.split(',')
+        if len(partes) > 2: # Evita múltiplas vírgulas
+            valor_limpo = partes[0] + ',' + partes[1]
+        
+    # Remove pontos de milhares
+    valor_sem_pontos = valor_limpo.replace('.', '')
+    
+    if not valor_sem_pontos:
+        return "0,00"
+
+    # Converte para float e formata com máscara brasileira
+    try:
+        # Trata o caso de ter vírgula
+        if ',' in valor_sem_pontos:
+            valor_float = float(valor_sem_pontos.replace(',', '.'))
+        else:
+            valor_float = float(valor_sem_pontos)
+
+        # Formatação final BRL (R$)
+        return f"{valor_float:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except ValueError:
+        return valor_str # Retorna o original se houver erro
+
+def desformatar_moeda(valor_formatado):
+    # Remove R$, pontos de milhar e substitui vírgula por ponto
+    valor_float_str = valor_formatado.replace('R$', '').replace('.', '').replace(',', '.')
+    try:
+        return float(valor_float_str)
+    except ValueError:
+        return 0.0
 
 # ===================== CONFIGURAÇÃO =====================
 st.set_page_config(page_title="Traders Corretora - CDB", layout="centered")
@@ -40,27 +83,60 @@ st.markdown("<h2 style='text-align: center; color: #222;'>Calculadora de CDB Pr�
 st.markdown("<p style='text-align: center; color: #666; font-size: 17px; margin-bottom: 30px;'>Simule rendimentos com a calculadora de CDB e descubra o retorno esperado para o cliente!</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# ===================== DADOS DO CLIENTE =====================
+# ===================== PARÂMETROS E ESTADOS INICIAIS =====================
+# Definir CDI de mercado para benchmark
+taxa_cdi_mercado = 14.90 
+taxa_cdi = taxa_cdi_mercado 
+perc_cdi = 0.0 # Inicializa a variável de percentual do CDI
+taxa_anual = 0.0 # Inicializa a taxa do CDB
+
+if 'valor_input' not in st.session_state:
+    st.session_state['valor_input'] = "500.000,00"
+
+# ===================== DADOS DA SIMULAÇÃO (AJUSTADOS) =====================
 st.subheader("Dados da Simulação")
 c1, c2 = st.columns(2)
 with c1:
     nome_cliente = st.text_input("Nome do Cliente", "João Silva")
     nome_assessor = st.text_input("Nome do Assessor", "Seu Nome")
-    valor_investido = st.number_input("Valor investido", min_value=100.0, value=500000.0, step=1000.0)
-    # Função para formatar o valor monetário na tela
-    st.markdown(f"<h3 style='color:#2E8B57'>R$ {valor_investido:,.2f}</h3>".replace(",", "X").replace(".", ",").replace("X", "."), unsafe_allow_html=True)
+    
+    # Máscara de entrada para Valor Investido
+    st.markdown("Valor investido")
+    valor_investido_str = st_keyup(
+        label="", 
+        value=st.session_state['valor_input'], 
+        placeholder="Digite o valor",
+        key="valor_bruto_input"
+    )
+    
+    # Aplica a formatação na string e atualiza o estado
+    valor_formatado_display = formatar_moeda(valor_investido_str)
+    st.session_state['valor_input'] = valor_formatado_display
+    
+    # Converte o valor formatado para float para os cálculos
+    valor_investido = desformatar_moeda(valor_formatado_display)
+    
+    st.markdown(f"<h3 style='color:#2E8B57'>R$ {st.session_state['valor_input']}</h3>", unsafe_allow_html=True)
+    
 with c2:
     data_simulacao = st.date_input("Data da Simulação", datetime.date.today(), format="DD/MM/YYYY")
     tipo_cdb = st.selectbox("Tipo de CDB", ["Pré-fixado", "Pós-fixado (% do CDI)"])
 
+# ----------------- Taxa de Configuração Movida para DADOS DA SIMULAÇÃO -----------------
+# Verifica o tipo de CDB e exibe os inputs de taxa na coluna 2
+if tipo_cdb == "Pós-fixado (% do CDI)":
+    taxa_cdi = st.number_input("Taxa CDI anual (Benchmark) (%)", value=taxa_cdi_mercado, step=0.05)
+    perc_cdi = st.number_input("Percentual do CDI (%)", value=125.0, step=1.0)
+    taxa_anual = taxa_cdi * (perc_cdi / 100)
+    dias_ano = 252 # Dias úteis
+else:
+    taxa_anual = st.number_input("Taxa pré-fixada anual (%)", value=17.00, step=0.05)
+    dias_ano = 360 # Dias corridos/comerciais (convenção para prefixados)
+    perc_cdi = 0.0 # Valor não relevante para Pré-fixado
+
 st.markdown("---")
 
-# ===================== PARÂMETROS =====================
-# Definir CDI de mercado para benchmark (14.90% a.a. conforme solicitado)
-taxa_cdi_mercado = 14.90 
-taxa_cdi = taxa_cdi_mercado # Inicializa a variável usada para cálculos de benchmark
-perc_cdi = 0.0 # Inicializa a variável de percentual do CDI
-
+# ===================== PREFERÊNCIAS DO INVESTIMENTO (APENAS DATAS) =====================
 with st.expander("Preferências do Investimento", expanded=True):
     col1, col2 = st.columns(2)
     with col1:
@@ -68,22 +144,9 @@ with st.expander("Preferências do Investimento", expanded=True):
     with col2:
         data_vencimento = st.date_input("Data do resgate", data_aplicacao + relativedelta(months=+12), format="DD/MM/YYYY")
 
-    if tipo_cdb == "Pós-fixado (% do CDI)":
-        col_cdi1, col_cdi2 = st.columns(2)
-        # O usuário pode editar a taxa CDI (usada como benchmark e para calcular o CDB)
-        with col_cdi1: taxa_cdi = st.number_input("Taxa CDI anual (Benchmark) (%)", value=taxa_cdi_mercado, step=0.05)
-        # Novo input para o percentual do CDB
-        with col_cdi2: perc_cdi = st.number_input("Percentual do CDI (%)", value=125.0, step=1.0)
-        # O cálculo do CDB usa o CDI atual * o percentual simulado
-        taxa_anual = taxa_cdi * (perc_cdi / 100)
-        dias_ano = 252 # Dias úteis
-    else:
-        # A taxa CDI não afeta o CDB, apenas a taxa pré-fixada
-        taxa_anual = st.number_input("Taxa pré-fixada anual (%)", value=17.00, step=0.05)
-        dias_ano = 360 # Dias corridos/comerciais (convenção para prefixados)
-        perc_cdi = 0.0 # Valor não relevante para Pré-fixado
-
 # ===================== CÁLCULOS CDB =====================
+if valor_investido <= 0: st.warning("Valor investido deve ser maior que zero."); st.stop()
+
 prazo_meses = (data_vencimento.year - data_aplicacao.year)*12 + (data_vencimento.month - data_aplicacao.month)
 if data_vencimento.day < data_aplicacao.day: prazo_meses -= 1
 prazo_dias = (data_vencimento - data_aplicacao).days
@@ -172,9 +235,7 @@ ax.legend(fontsize=10, loc='upper left')
 ax.grid(True, alpha=0.3)
 ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
 
-# =========================================================================
-# ANOTAÇÕES DE VALORES FINAIS NO GRÁFICO (Solicitado pelo usuário)
-# =========================================================================
+# ANOTAÇÕES DE VALORES FINAIS NO GRÁFICO 
 dados_finais = [
     (montante_bruto, "#6B48FF", "CDB"),
     (bruto_cdi_graf[-1], "#FF5733", "CDI"),
@@ -197,7 +258,6 @@ for valor, cor, nome in dados_finais:
                 ha='left',
                 va='center')
     
-# =========================================================================
 
 plt.xticks(rotation=0, ha='center')
 plt.tight_layout()
@@ -215,15 +275,14 @@ col3.metric("Valor Líquido", brl(montante_liquido), delta=brl(rendimento_liquid
 # ===================== GERAR PNG DO GRÁFICO =====================
 def grafico_png():
     buf = BytesIO()
-    # Remove o título do gráfico antes de salvar para evitar cortes no PDF
     current_title = ax.get_title()
     ax.set_title('') 
     plt.savefig(buf, format='png', dpi=300, bbox_inches='tight', facecolor='white')
-    ax.set_title(current_title) # Restaura o título
+    ax.set_title(current_title) 
     buf.seek(0)
     return buf
 
-# ===================== PDF 100% IGUAL AO EXEMPLO =====================
+# ===================== PDF GERAÇÃO =====================
 def criar_pdf_perfeito():
     # 1. Configuração do Documento
     buffer = BytesIO()
@@ -259,7 +318,6 @@ def criar_pdf_perfeito():
         spaceAfter=5
     ))
     
-    # Função para formatar moeda no PDF
     brl_pdf = lambda v: f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     
     # 3. Logo
@@ -278,6 +336,9 @@ def criar_pdf_perfeito():
     # 5. DADOS DA SIMULAÇÃO
     story.append(Paragraph("DADOS DA SIMULAÇÃO", styles['SectionTitle']))
     
+    # Determina a taxa de retorno para o PDF
+    taxa_retorno_pdf = f"{taxa_anual:.2f}% a.a." if tipo_cdb == "Pré-fixado" else f"{perc_cdi:.2f}% do CDI"
+    
     data_formatada = [
         [Paragraph("Nome do cliente", styles['DataLabel']), 
          Paragraph(nome_cliente, styles['DataValue']), 
@@ -287,7 +348,12 @@ def criar_pdf_perfeito():
         [Paragraph("Valor investido", styles['DataLabel']), 
          Paragraph(brl_pdf(valor_investido), styles['DataValue']), 
          Paragraph("Tipo de CDB", styles['DataLabel']), 
-         Paragraph(tipo_cdb.split('(')[0].strip(), styles['DataValue'])] 
+         Paragraph(tipo_cdb.split('(')[0].strip(), styles['DataValue'])],
+         
+        [Paragraph("Taxa de Retorno", styles['DataLabel']), 
+         Paragraph(taxa_retorno_pdf, styles['DataValue']), 
+         Paragraph("Benchmark CDI", styles['DataLabel']), 
+         Paragraph(f"{taxa_cdi:.2f}% a.a.", styles['DataValue'])]
     ]
     
     total_width = A4[0] - 30*mm 
@@ -311,20 +377,21 @@ def criar_pdf_perfeito():
     # Linha divisória
     story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=5, spaceAfter=10))
     
-    # 6. PREFERÊNCIAS DO INVESTIMENTO
+    # 6. PREFERÊNCIAS DO INVESTIMENTO (AGORA SÓ DATAS)
     story.append(Paragraph("PREFERÊNCIAS DO INVESTIMENTO", styles['SectionTitle']))
     
     # Ícones usados
     icone_valor = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>5</font>", styles['DataLabel'])
-    icone_data = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>d</font>", styles['DataLabel'])
+    icone_data_app = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>d</font>", styles['DataLabel'])
+    icone_data_venc = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>d</font>", styles['DataLabel'])
     icone_consideracoes = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>I</font>", styles['DataLabel'])
     
     prefs_data = [
-        [icone_valor, Paragraph("Valor aplicado", styles['DataLabel']), 
-         icone_data, Paragraph("Data do Vencimento", styles['DataLabel']), 
+        [icone_data_app, Paragraph("Data da Aplicação", styles['DataLabel']), 
+         icone_data_venc, Paragraph("Data do Vencimento", styles['DataLabel']), 
          icone_consideracoes, Paragraph("Considerações", styles['DataLabel'])],
         
-        [Spacer(1,1), Paragraph(brl_pdf(valor_investido), styles['PrefValue']), 
+        [Spacer(1,1), Paragraph(data_aplicacao.strftime('%d/%m/%Y'), styles['PrefValue']), 
          Spacer(1,1), Paragraph(data_vencimento.strftime('%d/%m/%Y'), styles['PrefValue']), 
          Spacer(1,1), Paragraph("IR, IOF", styles['PrefValue'])]
     ]
@@ -361,15 +428,10 @@ def criar_pdf_perfeito():
     VERDE_RENTABILIDADE_STR = '#2E8B57' 
     
     meses = prazo_meses 
-    # Lógica de label ajustada para mostrar % CDI
-    if tipo_cdb == "Pré-fixado":
-        taxa_label = f"{taxa_anual:.2f}% a.a."
-    else: 
-        taxa_label = f"{perc_cdi:.2f}% do CDI"
-            
+    
     valor_liquido_formatado = f"<b><font color='{VERDE_RENTABILIDADE_STR}'>{brl_pdf(montante_liquido)}</font></b>" 
     
-    resumo_texto = f"Com um investimento inicial de {brl_pdf(valor_investido)} em um CDB com taxa de {taxa_label} por um período de {meses} meses, o valor líquido será de {valor_liquido_formatado}."
+    resumo_texto = f"Com um investimento inicial de {brl_pdf(valor_investido)} em um CDB com taxa de {taxa_retorno_pdf} por um período de {meses} meses, o valor líquido será de {valor_liquido_formatado}."
 
     resumo_paragrafo = Paragraph(resumo_texto, styles['ResumoStyle'])
 
