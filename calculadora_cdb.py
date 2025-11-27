@@ -4,7 +4,9 @@ from dateutil.relativedelta import relativedelta
 from fpdf import FPDF
 import base64
 from io import BytesIO
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from datetime import timedelta
 
 # ===================== CONFIGURAÇÃO =====================
 st.set_page_config(page_title="Traders Corretora - CDB", layout="centered")
@@ -75,26 +77,34 @@ ir = rendimento_apos_iof * (aliquota_ir/100)
 montante_liquido = investimento + rendimento_apos_iof - ir
 rendimento_liquido = montante_liquido - investimento
 
-# ===================== GRÁFICO =====================
+# ===================== GRÁFICO COM MATPLOTLIB (100% compatível) =====================
 st.markdown("### Evolução do Investimento")
 
-datas, bruto_vals, liquido_vals = [], [], []
+datas_graf, bruto_graf, liquido_graf = [], [], []
 data_temp = data_aplicacao
 for m in range(prazo_meses + 1):
     dias = m * 30
     mont = investimento * (1 + taxa_diaria)**dias
     rend = mont - investimento
     ir_temp = rend * (0.225 if dias<=180 else 0.20 if dias<=360 else 0.175 if dias<=720 else 0.15)
-    datas.append(data_temp.strftime("%b/%Y"))
-    bruto_vals.append(round(mont, 2))
-    liquido_vals.append(round(investimento + rend - ir_temp, 2))
+    datas_graf.append(data_temp)
+    bruto_graf.append(mont)
+    liquido_graf.append(investimento + rend - ir_temp)
     data_temp += relativedelta(months=1)
 
-fig = go.Figure()
-fig.add_trace(go.Scatter(x=datas, y=bruto_vals, name="Montante Bruto", line=dict(color="#6B48FF", width=5)))
-fig.add_trace(go.Scatter(x=datas, y=liquido_vals, name="Montante Líquido", line=dict(color="#2E8B57", width=5, dash="dot")))
-fig.update_layout(height=500, template="simple_white", hovermode="x unified")
-st.plotly_chart(fig, use_container_width=True)
+fig, ax = plt.subplots(figsize=(12, 6))
+ax.plot(datas_graf, bruto_graf, label="Montante Bruto", color="#6B48FF", linewidth=4)
+ax.plot(datas_graf, liquido_graf, label="Montante Líquido (após IR)", color="#2E8B57", linewidth=4, linestyle="--")
+ax.set_title("Evolução do Investimento", fontsize=16, pad=20)
+ax.set_ylabel("Valor (R$)", fontsize=12)
+ax.legend(fontsize=12)
+ax.grid(True, alpha=0.3)
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%b/%Y'))
+ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+plt.xticks(rotation=45)
+plt.tight_layout()
+
+st.pyplot(fig)
 
 # ===================== RESULTADO =====================
 st.markdown("---")
@@ -105,10 +115,12 @@ col1.metric("Montante Bruto", brl(montante_bruto))
 col2.metric("Rendimento Bruto", brl(rendimento_bruto))
 col3.metric("Montante Líquido", brl(montante_liquido), delta=brl(rendimento_liquido))
 
-# ===================== FUNÇÃO PARA GERAR PNG DO GRÁFICO =====================
-@st.cache_data
-def grafico_para_png():
-    return fig.to_image(format="png", width=1000, height=500, scale=2)
+# ===================== GERAR PNG DO GRÁFICO =====================
+def grafico_png():
+    buf = BytesIO()
+    plt.savefig(buf, format='png', dpi=200, bbox_inches='tight')
+    buf.seek(0)
+    return buf
 
 # ===================== GERAR PDF COM GRÁFICO =====================
 def criar_pdf():
@@ -144,8 +156,8 @@ def criar_pdf():
     pdf.ln(15)
 
     # GRÁFICO NO PDF
-    png_bytes = grafico_para_png()
-    pdf.image(BytesIO(png_bytes), x=10, y=None, w=190)
+    png = grafico_png()
+    pdf.image(png, x=10, y=None, w=190)
 
     # Rodapé
     pdf.set_y(-40)
@@ -160,7 +172,7 @@ def criar_pdf():
 # ===================== BOTÃO PDF =====================
 st.markdown("---")
 if st.button("GERAR PDF COM GRÁFICO", type="primary", use_container_width=True):
-    with st.spinner("Gerando PDF com gráfico..."):
+    with st.spinner("Gerando seu PDF profissional..."):
         pdf_data = criar_pdf()
         b64 = base64.b64encode(pdf_data).decode()
         nome_arq = f"CDB_{nome_cliente.replace(' ', '_')}_{data_simulacao.strftime('%d%m%Y')}.pdf"
