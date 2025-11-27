@@ -224,6 +224,9 @@ def criar_pdf_perfeito():
     story.append(t_dados)
     story.append(Spacer(1, 15*mm))
 
+    # Linha divisória
+
+    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=5, spaceAfter=10))
     # 6. PREFERÊNCIAS DO INVESTIMENTO (Ajustado para o layout de 3 colunas)
     story.append(Paragraph("PREFERÊNCIAS DO INVESTIMENTO", styles['SectionTitle']))
     
