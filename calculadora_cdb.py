@@ -178,7 +178,6 @@ def criar_pdf_perfeito():
         spaceBefore=5,
         spaceAfter=5
     ))
-    # Novo estilo para o bloco de fundamentos (justificado)
     styles.add(ParagraphStyle(name='FundamentosStyle', 
         fontName='Helvetica',
         fontSize=9, 
@@ -317,28 +316,48 @@ def criar_pdf_perfeito():
     
     story.append(Spacer(1, 5*mm)) 
 
-    # 8. RESULTADO FINAL 
-    resultado = [
+    # 8. RESULTADO FINAL (Layout Corrigido + Borda Branca)
+    
+    # Novo Layout: Combinar Título e Dados em uma única tabela
+    resultado_completo = [
+        [Paragraph("<b>RESULTADO FINAL</b>", ParagraphStyle(name='ResultTitle', fontSize=10, fontName='Helvetica-Bold', alignment=1, textColor=colors.white, backColor=AZUL_MARINHO_FUNDO, leftPadding=15, rightPadding=15, topPadding=8, bottomPadding=8, spaceAfter=0)), 
+         Paragraph("<b>RESULTADO FINAL</b>", ParagraphStyle(name='ResultTitle', fontSize=10, fontName='Helvetica-Bold', alignment=1, textColor=colors.white, backColor=AZUL_MARINHO_FUNDO, leftPadding=15, rightPadding=15, topPadding=8, bottomPadding=8, spaceAfter=0)),
+         Paragraph("<b>RESULTADO FINAL</b>", ParagraphStyle(name='ResultTitle', fontSize=10, fontName='Helvetica-Bold', alignment=1, textColor=colors.white, backColor=AZUL_MARINHO_FUNDO, leftPadding=15, rightPadding=15, topPadding=8, bottomPadding=8, spaceAfter=0))],
+        
         ["VALOR BRUTO", "IMPOSTOS", "VALOR LÍQUIDO"],
         [brl_pdf(montante_bruto), brl_pdf(ir + (rendimento_bruto - rendimento_apos_iof)), brl_pdf(montante_liquido)],
     ]
     
-    story.append(Paragraph("<b>RESULTADO FINAL</b>", ParagraphStyle(name='ResultTitleBlock', fontSize=10, fontName='Helvetica-Bold', alignment=1, textColor=colors.white, backColor=AZUL_MARINHO_FUNDO, leftPadding=15, rightPadding=15, topPadding=8, bottomPadding=8)))
-    
-    t_res_final = Table(resultado, colWidths=[180*mm/3, 180*mm/3, 180*mm/3])
+    t_res_final = Table(resultado_completo, colWidths=[total_width/3, total_width/3, total_width/3])
     t_res_final.hAlign = 'CENTER'
+
     t_res_final.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), AZUL_MARINHO_FUNDO), 
-        ('TEXTCOLOR', (0,0), (-1,-1), colors.white),
+        # Mesclar células para o título (o fundo azul marinho do topo já cobre)
+        ('SPAN', (0,0), (2,0)), 
+        
+        # Estilo da Linha do Título (Resultado Final)
+        ('BACKGROUND', (0,0), (2,0), AZUL_MARINHO_FUNDO), 
+        # Borda Branca de 1pt ABAIXO do título
+        ('LINEBELOW', (0,0), (2,0), 1, colors.white), 
+
+        # Estilo da Linha de Rótulos (Valor Bruto, Impostos, Valor Líquido)
+        ('BACKGROUND', (0,1), (2,1), AZUL_MARINHO_FUNDO), 
+        ('TEXTCOLOR', (0,1), (2,1), colors.white),
+        ('FONTSIZE', (0,1), (2,1), 10),
+        ('FONTNAME', (0,1), (2,1), 'Helvetica-Bold'),
+        ('TOPPADDING', (0,1), (2,1), 5),
+        ('BOTTOMPADDING', (0,1), (2,1), 5),
+        
+        # Estilo da Linha de Valores
+        ('BACKGROUND', (0,2), (2,2), AZUL_MARINHO_FUNDO), 
+        ('TEXTCOLOR', (0,2), (2,2), colors.white),
+        ('FONTSIZE', (0,2), (2,2), 16),
+        ('FONTNAME', (0,2), (2,2), 'Helvetica-Bold'),
+        ('TOPPADDING', (0,2), (2,2), 10),
+        ('BOTTOMPADDING', (0,2), (2,2), 10),
+        
+        # Alinhamentos
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('FONTSIZE', (0,0), (-1,0), 10),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,1), (-1,1), 16),
-        ('FONTNAME', (0,1), (-1,1), 'Helvetica-Bold'),
-        ('TOPPADDING', (0,0), (-1,0), 5),
-        ('BOTTOMPADDING', (0,0), (-1,0), 5),
-        ('TOPPADDING', (0,1), (-1,1), 10),
-        ('BOTTOMPADDING', (0,1), (-1,1), 10),
         ('GRID', (0,0), (-1,-1), 0, colors.transparent),
     ]))
     story.append(t_res_final)
@@ -346,16 +365,16 @@ def criar_pdf_perfeito():
     # Linha divisória após o Resultado Final
     story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=10)) 
 
-    # 9. FUNDAMENTOS DO CDB (NOVO BLOCO - ANTES DO GRÁFICO)
+    # 9. FUNDAMENTOS DO CDB (Asteriscos ajustados para negrito)
     story.append(Paragraph("FUNDAMENTOS DO CDB", styles['SectionTitle'])) 
     
-    # Conteúdo de fundamentos extremamente enxuto
+    # Conteúdo de fundamentos com negrito ajustado
     fundamentos_texto = (
-        "O **CDB** é um título de renda fixa emitido por bancos. É uma escolha segura por contar com a "
-        "garantia do **FGC** (Fundo Garantidor de Créditos), que cobre até R$ 250.000 por CPF/instituição. "
-        "A **Rentabilidade** pode ser Pré-fixada ou Pós-fixada (atrelada ao CDI). "
-        "A **Liquidez** pode ser diária (reserva de emergência) ou no vencimento (maior retorno). "
-        "O **IR** é regressivo (menor imposto em prazos maiores), e o **IOF** é isento após 30 dias."
+        "O <b>CDB</b> é um título de renda fixa emitido por bancos. É uma escolha segura por contar com a "
+        "garantia do <b>FGC</b> (Fundo Garantidor de Créditos), que cobre até R$ 250.000 por CPF/instituição. "
+        "A <b>Rentabilidade</b> pode ser Pré-fixada ou Pós-fixada (atrelada ao CDI). "
+        "A <b>Liquidez</b> pode ser diária (reserva de emergência) ou no vencimento (maior retorno). "
+        "O <b>IR</b> é regressivo (menor imposto em prazos maiores), e o <b>IOF</b> é isento após 30 dias."
     )
     
     story.append(Paragraph(fundamentos_texto, styles['FundamentosStyle']))
