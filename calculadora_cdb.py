@@ -12,10 +12,11 @@ from reportlab.lib import colors
 from reportlab.lib.units import mm
 import requests
 from PIL import Image as PILImage
-from io import BytesIO as PIOBytesIO # Usando o alias para evitar conflito com io.BytesIO
+from io import BytesIO as PIOBytesIO 
 
 # ===================== FUNÇÃO PARA LOGO COM PROPORÇÃO CORRETA =====================
 def carregar_logo():
+    # URL da logo da Traders
     url = "https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png"
     response = requests.get(url)
     img = PILImage.open(PIOBytesIO(response.content))
@@ -23,7 +24,6 @@ def carregar_logo():
     proporcao = altura / largura
     largura_desejada = 200 
     altura_calculada = largura_desejada * proporcao
-    # CORRIGIDO: Nome da classe PIOBytesIO
     return Image(PIOBytesIO(response.content), width=largura_desejada, height=altura_calculada)
 
 # ===================== CONFIGURAÇÃO =====================
@@ -47,9 +47,9 @@ with c1:
     nome_cliente = st.text_input("Nome do Cliente", "João Silva")
     nome_assessor = st.text_input("Nome do Assessor", "Seu Nome")
     valor_investido = st.number_input("Valor investido", min_value=100.0, value=500000.0, step=1000.0)
+    # Função para formatar o valor monetário na tela
     st.markdown(f"<h3 style='color:#2E8B57'>R$ {valor_investido:,.2f}</h3>".replace(",", "X").replace(".", ",").replace("X", "."), unsafe_allow_html=True)
 with c2:
-    # A data_simulacao é usada no rodapé do PDF
     data_simulacao = st.date_input("Data da Simulação", datetime.date.today(), format="DD/MM/YYYY")
     tipo_cdb = st.selectbox("Tipo de CDB", ["Pré-fixado", "Pós-fixado (% do CDI)"])
 
@@ -108,7 +108,6 @@ montante_liquido = valor_investido + rendimento_apos_iof - ir
 rendimento_liquido = montante_liquido - valor_investido
 
 # ===================== CÁLCULOS BENCHMARKS =====================
-# 'taxa_cdi' já foi definida pelo usuário ou usa o padrão 14.90%
 taxa_cdi_anual = taxa_cdi / 100 
 taxa_poupanca_anual = 0.0617 # Proxy: 0.5% a.m. (6.17% a.a.)
 taxa_ibov_anual = 0.10 # Proxy: 10% a.a.
@@ -172,6 +171,34 @@ ax.set_ylabel("Valor em R$")
 ax.legend(fontsize=10, loc='upper left')
 ax.grid(True, alpha=0.3)
 ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+
+# =========================================================================
+# ANOTAÇÕES DE VALORES FINAIS NO GRÁFICO (Solicitado pelo usuário)
+# =========================================================================
+dados_finais = [
+    (montante_bruto, "#6B48FF", "CDB"),
+    (bruto_cdi_graf[-1], "#FF5733", "CDI"),
+    (bruto_poupanca_graf[-1], "#337AFF", "Poupança"),
+    (bruto_ibov_graf[-1], "#FFC300", "IBOV"),
+]
+
+# Formatação auxiliar para anotação
+brl_anot = lambda v: f"R$ {v:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+for valor, cor, nome in dados_finais:
+    # Adiciona o valor formatado ao lado da última data
+    ax.annotate(brl_anot(valor),
+                xy=(data_vencimento, valor),
+                xytext=(5, 0), # Offset de 5 pixels para a direita
+                textcoords='offset points',
+                color=cor,
+                fontsize=9,
+                fontweight='bold',
+                ha='left',
+                va='center')
+    
+# =========================================================================
+
 plt.xticks(rotation=0, ha='center')
 plt.tight_layout()
 st.pyplot(fig)
@@ -188,10 +215,11 @@ col3.metric("Valor Líquido", brl(montante_liquido), delta=brl(rendimento_liquid
 # ===================== GERAR PNG DO GRÁFICO =====================
 def grafico_png():
     buf = BytesIO()
+    # Remove o título do gráfico antes de salvar para evitar cortes no PDF
     current_title = ax.get_title()
     ax.set_title('') 
     plt.savefig(buf, format='png', dpi=300, bbox_inches='tight', facecolor='white')
-    ax.set_title(current_title)
+    ax.set_title(current_title) # Restaura o título
     buf.seek(0)
     return buf
 
@@ -231,6 +259,7 @@ def criar_pdf_perfeito():
         spaceAfter=5
     ))
     
+    # Função para formatar moeda no PDF
     brl_pdf = lambda v: f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     
     # 3. Logo
@@ -430,12 +459,12 @@ def criar_pdf_perfeito():
                            ParagraphStyle(name='GraphNote', fontSize=9, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=10*mm))) 
 
     # =========================================================================
-    # 11. NOVO BLOCO: COMPARAÇÃO DE RESULTADOS BRUTOS (Solicitado pelo usuário)
+    # 11. BLOCO: COMPARAÇÃO DE RESULTADOS BRUTOS
     # =========================================================================
     
     story.append(Paragraph("COMPARATIVO DE RESULTADOS BRUTOS (No Vencimento)", styles['SectionTitle'])) 
 
-    # Valores brutos finais
+    # Valores brutos finais (reutiliza as listas geradas para o gráfico)
     valor_bruto_cdb = montante_bruto
     valor_bruto_cdi = bruto_cdi_graf[-1] 
     valor_bruto_poupanca = bruto_poupanca_graf[-1]
@@ -492,8 +521,6 @@ def criar_pdf_perfeito():
 st.markdown("---")
 if st.button("BAIXAR PROPOSTA PREMIUM", type="primary", use_container_width=True):
     with st.spinner("Gerando sua proposta premium..."):
-        # É necessário garantir que as variáveis do gráfico (bruto_cdi_graf, etc.) estejam populadas
-        # O cálculo é feito no Streamlit display e reutilizado aqui, o que está correto.
         pdf_data = criar_pdf_perfeito()
         b64 = base64.b64encode(pdf_data).decode()
         nome_arq = f"Proposta_CDB_{nome_cliente.replace(' ', '_')}.pdf"
