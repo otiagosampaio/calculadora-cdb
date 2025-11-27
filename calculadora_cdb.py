@@ -21,14 +21,14 @@ def carregar_logo():
     img = PILImage.open(PIOBytesIO(response.content))
     largura, altura = img.size
     proporcao = altura / largura
-    largura_desejada = 100
+    largura_desejada = 200  # 🎯 AJUSTE 1: Largura da logo dobrada (de 100 para 200)
     altura_calculada = largura_desejada * proporcao
     return Image(PIOBytesIO(response.content), width=largura_desejada, height=altura_calculada)
 
 # ===================== CONFIGURAÇÃO =====================
 st.set_page_config(page_title="Traders Corretora - CDB", layout="centered")
 
-# ===================== LOGO + TÍTULO =====================
+# ===================== LOGO + TÍTULO (Streamlit Display) =====================
 st.markdown(
     """<div style="text-align: center; margin: 20px 0;">
         <img src="https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png" width="500">
@@ -39,12 +39,12 @@ st.markdown("<h2 style='text-align: center; color: #222;'>Calculadora de CDB Pr�
 st.markdown("<p style='text-align: center; color: #666; font-size: 17px; margin-bottom: 30px;'>Simulação personalizada com IR regressivo e IOF</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# ===================== DADOS DO CLIENTE (COM ASSESSOR) =====================
+# ===================== DADOS DO CLIENTE =====================
 st.subheader("Dados da Simulação")
 c1, c2 = st.columns(2)
 with c1:
     nome_cliente = st.text_input("Nome do Cliente", "João Silva")
-    nome_assessor = st.text_input("Nome do Assessor", "Seu Nome")  # ✅ Assessor capturado aqui
+    nome_assessor = st.text_input("Nome do Assessor", "Seu Nome")
     valor_investido = st.number_input("Valor investido", min_value=100.0, value=500000.0, step=1000.0)
     st.markdown(f"<h3 style='color:#2E8B57'>R$ {valor_investido:,.2f}</h3>".replace(",", "X").replace(".", ",").replace("X", "."), unsafe_allow_html=True)
 with c2:
@@ -76,10 +76,6 @@ prazo_meses = (data_vencimento.year - data_aplicacao.year)*12 + (data_vencimento
 if data_vencimento.day < data_aplicacao.day: prazo_meses -= 1
 prazo_dias = (data_vencimento - data_aplicacao).days
 if prazo_dias <= 0: st.error("Data de resgate deve ser posterior"); st.stop()
-# Reajustando o cálculo de dias para usar a diferença exata entre datas (melhor para IOF/IR)
-# Se você deseja simular meses de 30 dias para a projeção, mantenha a lógica original,
-# mas para IOF e IR, o cálculo em dias corridos é o mais preciso. Vou manter o cálculo original que
-# usa a diferença exata de dias para os impostos e o cálculo mensal para o gráfico.
 
 taxa_diaria = (1 + taxa_anual/100)**(1/dias_ano) - 1
 montante_bruto = valor_investido * (1 + taxa_diaria)**prazo_dias
@@ -100,11 +96,12 @@ rendimento_liquido = montante_liquido - valor_investido
 st.markdown("### Projeção da Rentabilidade")
 datas_graf, bruto_graf, liquido_graf = [], [], []
 data_temp = data_aplicacao
-# Usando o cálculo de prazo_meses do seu código original (que simula meses de 30 dias)
+
+# Gera pontos do gráfico
 for m in range(prazo_meses + 1):
-    dias = (data_temp - data_aplicacao).days # Usando diferença de dias reais, mais preciso
+    dias = (data_temp - data_aplicacao).days
     if m == 0: dias = 0
-    if m == prazo_meses: dias = prazo_dias # Garante que o último ponto use o prazo exato
+    if m == prazo_meses: dias = prazo_dias
         
     mont = valor_investido * (1 + taxa_diaria)**dias
     rend = mont - valor_investido
@@ -115,10 +112,10 @@ for m in range(prazo_meses + 1):
     liquido_graf.append(valor_investido + rend - ir_temp)
     
     data_temp += relativedelta(months=1)
-    if data_temp > data_vencimento: # Impede extrapolação
+    if data_temp > data_vencimento:
         data_temp = data_vencimento
         
-if data_vencimento not in datas_graf: # Garante o ponto final exato
+if data_vencimento not in datas_graf:
     datas_graf.append(data_vencimento)
     bruto_graf.append(montante_bruto)
     liquido_graf.append(montante_liquido)
@@ -147,11 +144,10 @@ col3.metric("Valor Líquido", brl(montante_liquido), delta=brl(rendimento_liquid
 # ===================== GERAR PNG DO GRÁFICO =====================
 def grafico_png():
     buf = BytesIO()
-    # Remove o título do gráfico ao salvar para o PDF para replicar o anexo
     current_title = ax.get_title()
     ax.set_title('') 
     plt.savefig(buf, format='png', dpi=300, bbox_inches='tight', facecolor='white')
-    ax.set_title(current_title) # Restaura o título para o display do Streamlit
+    ax.set_title(current_title)
     buf.seek(0)
     return buf
 
@@ -165,28 +161,32 @@ def criar_pdf_perfeito():
     # 2. Estilos Personalizados
     styles = getSampleStyleSheet()
     AZUL_MARINHO_FUNDO = colors.HexColor("#0f172a") 
-    AZUL_MARINHO_CLARO = colors.HexColor("#1e3a8a") 
     
     styles.add(ParagraphStyle(name='TitlePDF', fontSize=18, fontName='Helvetica-Bold', alignment=1, spaceAfter=2*mm, textColor=colors.HexColor('#000000')))
-    styles.add(ParagraphStyle(name='SubTitlePDF', fontSize=10, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=15*mm))
-    styles.add(ParagraphStyle(name='SectionTitle', fontSize=10, fontName='Helvetica-Bold', spaceAfter=5*mm, textColor=colors.HexColor('#333333')))
+    styles.add(ParagraphStyle(name='SubTitlePDF', fontSize=10, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=10*mm)) # Ajuste de espaçamento para 10mm
+    
+    # Estilo do título de seção para alinhar à esquerda
+    styles.add(ParagraphStyle(name='SectionTitle', fontSize=10, fontName='Helvetica-Bold', spaceAfter=5*mm, textColor=colors.HexColor('#333333'), alignment=0)) 
+    
     styles.add(ParagraphStyle(name='DataLabel', fontSize=9, fontName='Helvetica', textColor=colors.HexColor('#666666'), alignment=0))
     styles.add(ParagraphStyle(name='DataValue', fontSize=11, fontName='Helvetica-Bold', textColor=colors.HexColor('#333333'), alignment=0))
-    styles.add(ParagraphStyle(name='Footer', fontSize=9, alignment=1, textColor=colors.HexColor('#666666'))) # ✅ Estilo do rodapé
+    styles.add(ParagraphStyle(name='Footer', fontSize=9, alignment=1, textColor=colors.HexColor('#666666')))
     
-    # Helper para formatar R$
     brl_pdf = lambda v: f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     
     # 3. Logo
     logo = carregar_logo()
     logo.hAlign = 'CENTER'
     story.append(logo)
-    story.append(Spacer(1, 5*mm))
-
+    story.append(Spacer(1, 10*mm)) # 🎯 AJUSTE 2: Aumentado espaçamento pós-logo
+    
     # 4. Título Principal
     story.append(Paragraph("Simulação de Investimento - CDB Pré e Pós-fixado", styles['TitlePDF']))
     story.append(Paragraph("Projeção personalizada considerando IR e IOF", styles['SubTitlePDF']))
     
+    # 🎯 AJUSTE 3: Inserir linha divisória
+    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=5, spaceAfter=10))
+
     # 5. DADOS DA SIMULAÇÃO
     story.append(Paragraph("DADOS DA SIMULAÇÃO", styles['SectionTitle']))
     
@@ -202,9 +202,12 @@ def criar_pdf_perfeito():
          Paragraph(tipo_cdb.split('(')[0].strip(), styles['DataValue'])] 
     ]
     
-    colWidths = [A4[0] * 0.22, A4[0] * 0.28, A4[0] * 0.22, A4[0] * 0.28]
+    # A largura da tabela em 100% garante que ela se alinhe com as margens da página.
+    colWidths = [A4[0] * 0.22, A4[0] * 0.28, A4[0] * 0.22, A4[0] * 0.28] 
     t_dados = Table(data_formatada, colWidths=colWidths)
     
+    t_dados.hAlign = 'LEFT' # 🎯 AJUSTE 4: Garante que a tabela se inicie no alinhamento esquerdo da margem.
+
     t_dados.setStyle(TableStyle([
         ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
         ('LEFTPADDING', (0,0), (-1,-1), 10),
@@ -216,16 +219,16 @@ def criar_pdf_perfeito():
     story.append(t_dados)
     story.append(Spacer(1, 15*mm))
 
-    # 6. PREFERÊNCIAS DO INVESTIMENTO (Tentar replicar as caixas com texto)
+    # 6. PREFERÊNCIAS DO INVESTIMENTO
     story.append(Paragraph("PREFERÊNCIAS DO INVESTIMENTO", styles['SectionTitle']))
     
-    # Simplificando a seção para o texto que mais se aproxima do anexo
+    # Simulação da caixa de preferências com texto simples formatado
     story.append(Paragraph(f"<b>5</b> <font size='8'>Valor aplicado</font> | <b>{brl_pdf(valor_investido)}</b>", 
-                           ParagraphStyle(name='Pref1', fontSize=10, fontName='Helvetica', spaceAfter=1*mm, textColor=colors.HexColor('#666666'))))
+                           ParagraphStyle(name='Pref1', fontSize=10, fontName='Helvetica', spaceAfter=1*mm, textColor=colors.HexColor('#666666'), leftIndent=15, firstLineIndent=-15)))
     story.append(Paragraph(f"<b>z/b a</b> <font size='8'>Período</font> | <b>{data_aplicacao.strftime('%d/%m/%Y')} a {data_vencimento.strftime('%d/%m/%Y')}</b>",
-                           ParagraphStyle(name='Pref2', fontSize=10, fontName='Helvetica', spaceAfter=1*mm, textColor=colors.HexColor('#666666'))))
+                           ParagraphStyle(name='Pref2', fontSize=10, fontName='Helvetica', spaceAfter=1*mm, textColor=colors.HexColor('#666666'), leftIndent=15, firstLineIndent=-15)))
     story.append(Paragraph(f"<b>I</b> <font size='8'>Considerações</font> | <b>IR, IOF</b>",
-                           ParagraphStyle(name='Pref3', fontSize=10, fontName='Helvetica-Bold', spaceAfter=20*mm, textColor=colors.HexColor('#666666'))))
+                           ParagraphStyle(name='Pref3', fontSize=10, fontName='Helvetica-Bold', spaceAfter=20*mm, textColor=colors.HexColor('#666666'), leftIndent=15, firstLineIndent=-15)))
 
 
     # 7. PROJEÇÃO DA RENTABILIDADE (Gráfico)
@@ -238,17 +241,14 @@ def criar_pdf_perfeito():
                            ParagraphStyle(name='GraphNote', fontSize=9, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=20*mm)))
 
 
-    # 8. RESULTADO FINAL (Replicando o bloco escuro)
-    
+    # 8. RESULTADO FINAL 
     resultado = [
         ["VALOR BRUTO", "IMPOSTOS", "VALOR LÍQUIDO"],
         [brl_pdf(montante_bruto), brl_pdf(ir + (rendimento_bruto - rendimento_apos_iof)), brl_pdf(montante_liquido)],
     ]
     
-    # Título do Bloco
     story.append(Paragraph("<b>RESULTADO FINAL</b>", ParagraphStyle(name='ResultTitleBlock', fontSize=10, fontName='Helvetica-Bold', alignment=1, textColor=colors.white, backColor=AZUL_MARINHO_FUNDO, leftPadding=15, rightPadding=15, topPadding=8, bottomPadding=8)))
     
-    # Dados do Bloco
     t_res_final = Table(resultado, colWidths=[180*mm/3, 180*mm/3, 180*mm/3])
     t_res_final.hAlign = 'CENTER'
     t_res_final.setStyle(TableStyle([
@@ -269,7 +269,6 @@ def criar_pdf_perfeito():
     story.append(Spacer(1, 20*mm))
     
     # 9. Rodapé (Simulação elaborada...)
-    # ✅ Correção: Usando a variável nome_assessor para dinamizar o rodapé do PDF.
     story.append(Paragraph(f"Simulação elaborada por <b>{nome_assessor}</b> em {data_simulacao.strftime('%d/%m/%Y')}", styles['Footer']))
 
 
@@ -279,7 +278,6 @@ def criar_pdf_perfeito():
 
 # ===================== BOTÃO PDF =====================
 st.markdown("---")
-# O botão no anexo é um retângulo azul. Vamos replicar o texto e o estilo.
 if st.button("BAIXAR PROPOSTA PREMIUM", type="primary", use_container_width=True):
     with st.spinner("Gerando sua proposta premium..."):
         pdf_data = criar_pdf_perfeito()
@@ -290,7 +288,7 @@ if st.button("BAIXAR PROPOSTA PREMIUM", type="primary", use_container_width=True
         st.balloons()
         st.success("Proposta premium gerada com sucesso!")
 
-# ✅ Verificação: Rodapé do Streamlit usando nome_assessor corretamente
+# ===================== RODAPÉ STREAMLIT =====================
 st.markdown(
     f"<p style='text-align:center; color:#666; margin-top:40px;'>Simulação elaborada por <b>{nome_assessor}</b> em {data_simulacao.strftime('%d/%m/%Y')}</p>",
     unsafe_allow_html=True
