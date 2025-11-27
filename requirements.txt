@@ -2,3 +2,5 @@ streamlit
 python-dateutil
 plotly
 pandas
+fpdf2
+kaleido
