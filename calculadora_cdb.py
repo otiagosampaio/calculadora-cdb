@@ -18,7 +18,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 st.markdown("<h2 style='text-align: center; color: #222;'>Calculadora de CDB Pré e Pós-fixado</h2>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #666; font-size: 17px;'>Simulação personalizada de renda fixa com imposto de renda regressivo e IOF</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #666; font-size: 17px;'>Simulação personalizada de renda fixa com IR regressivo e IOF</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ===================== DADOS DO CLIENTE =====================
@@ -92,35 +92,15 @@ for m in meses:
 
 fig = go.Figure()
 fig.add_trace(go.Scatter(x=datas, y=bruto, name="Bruto", line=dict(color="#6B48FF", width=4)))
-fig.add_trace(go.Scatter(x=datas, y=liquido, name="Líquido", line=dict(color="#2E8B57", width=4, dash="dot")))
-fig.update_layout(height=420, hovermode="x unified", margin=dict(t=40))
+fig.add_trace(go.Scatter(x=datas, y=liquido, name="Líquido (após IR)", line=dict(color="#2E8B57", width=4, dash="dot")))
+fig.update_layout(height=420, hovermode="x unified", margin=dict(t=40), template="simple_white")
 st.plotly_chart(fig, use_container_width=True)
 
-# ===================== RESULTADO =====================
-st.markdown("---")
-st.markdown("<h2 style='text-align:center; color:#6B48FF;'>Resultado Final</h2>", unsafe_allow_html=True)
-col1, col2, col3 = st.columns(3)
-def brl(v): return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-col1.metric("Montante Bruto", brl(montante_bruto))
-col2.metric("Rendimento Bruto", brl(rendimento_bruto))
-col3.metric("Montante Líquido", brl(montante_liquido), delta=brl(rendimento_liquido))
+# ===================== FUNÇÃO GERAR PDF (SEM KALEIDO) =====================
+@st.cache_data(show_spinner=False)
+def gerar_grafico_png():
+    return fig.to_image(format="png", width=1000, height=500)
 
-# ===================== DETALHAMENTO =====================
-st.markdown("---")
-st.subheader("Detalhamento")
-d1, d2 = st.columns(2)
-with d1:
-    st.write(f"**Cliente:** {nome_cliente}")
-    st.write(f"**Assessor:** {nome_assessor}")
-    st.write(f"**Simulação:** {data_simulacao.strftime('%d/%m/%Y')}")
-    st.write(f"**Aplicação:** {data_aplicacao.strftime('%d/%m/%Y')} → {data_vencimento.strftime('%d/%m/%Y')}")
-    st.write(f"**Prazo:** {prazo_dias} dias")
-with d2:
-    st.write(f"**Alíquota IR:** {aliquota_ir}%")
-    st.write(f"**Imposto de Renda:** {brl(ir)}")
-    st.write(f"**Rendimento líquido:** {brl(rendimento_liquido)}")
-
-# ===================== FUNÇÃO GERAR PDF =====================
 def criar_pdf():
     pdf = FPDF()
     pdf.add_page()
@@ -140,24 +120,23 @@ def criar_pdf():
     pdf.ln(10)
     pdf.cell(0, 8, f"Cliente: {nome_cliente}", ln=True)
     pdf.cell(0, 8, f"Assessor: {nome_assessor}", ln=True)
-    pdf.cell(0, 8, f"Data da simulação: {data_simulacao.strftime('%d/%m/%Y')}", ln=True)
+    pdf.cell(0, 8, f"Data: {data_simulacao.strftime('%d/%m/%Y')}", ln=True)
     pdf.ln(8)
 
     # Resultados
     pdf.set_font("Helvetica", "B", 14)
     pdf.cell(0, 10, "Resultado Final", ln=True)
     pdf.set_font("Helvetica", size=12)
-    pdf.cell(0, 8, f"Valor investido:      R$ {investimento:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), ln=True)
-    pdf.cell(0, 8, f"Montante Bruto:       {brl(montante_bruto)}", ln=True)
-    pdf.cell(0, 8, f"Montante Líquido:     {brl(montante_liquido)}", ln=True)
-    pdf.cell(0, 8, f"Rendimento líquido:   {brl(rendimento_liquido)}", ln=True)
+    brl = lambda v: f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    pdf.cell(0, 8, f"Valor investido:     {brl(investimento)}", ln=True)
+    pdf.cell(0, 8, f"Montante Bruto:      {brl(montante_bruto)}", ln=True)
+    pdf.cell(0, 8, f"Montante Líquido:    {brl(montante_liquido)}", ln=True)
+    pdf.cell(0, 8, f"Rendimento líquido:  {brl(rendimento_liquido)}", ln=True)
     pdf.ln(8)
 
-    # Gráfico
-    img_buffer = BytesIO()
-    fig.write_image(img_buffer, format="png")
-    img_buffer.seek(0)
-    pdf.image(img_buffer, x=10, y=None, w=190)
+    # Gráfico (agora funciona!)
+    img_bytes = gerar_grafico_png()
+    pdf.image(BytesIO(img_bytes), x=10, y=None, w=190)
 
     # Rodapé
     pdf.set_y(-40)
@@ -167,16 +146,25 @@ def criar_pdf():
     buffer = BytesIO()
     pdf.output(buffer)
     buffer.seek(0)
-    return buffer
+    return buffer.getvalue()
 
-# ===================== BOTÃO GERAR PDF =====================
+# ===================== RESULTADO + BOTÃO PDF =====================
+st.markdown("---")
+st.markdown("<h2 style='text-align:center; color:#6B48FF;'>Resultado Final</h2>", unsafe_allow_html=True)
+col1, col2, col3 = st.columns(3)
+brl = lambda v: f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+col1.metric("Montante Bruto", brl(montante_bruto))
+col2.metric("Rendimento Bruto", brl(rendimento_bruto))
+col3.metric("Montante Líquido", brl(montante_liquido), delta=brl(rendimento_liquido))
+
 st.markdown("---")
 if st.button("GERAR PDF DA PROPOSTA", type="primary", use_container_width=True):
-    with st.spinner("Gerando seu PDF..."):
-        pdf_buffer = criar_pdf()
-        b64 = base64.b64encode(pdf_buffer.read()).decode()
-        href = f'<a href="data:application/pdf;base64,{b64}" download="Proposta_CDB_{nome_cliente.replace(" ", "_")}.pdf"><b>BAIXAR PDF AGORA</b></a>'
+    with st.spinner("Gerando seu PDF profissional..."):
+        pdf_data = criar_pdf()
+        b64 = base64.b64encode(pdf_data).decode()
+        href = f'<a href="data:application/pdf;base64,{b64}" download="CDB_{nome_cliente.replace(" ", "_")}.pdf"><b>BAIXAR PDF AGORA</b></a>'
         st.markdown(href, unsafe_allow_html=True)
+        st.balloons()
         st.success("PDF gerado com sucesso!")
 
 # ===================== RODAPÉ =====================
