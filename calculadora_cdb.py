@@ -12,7 +12,7 @@ from reportlab.lib import colors
 from reportlab.lib.units import mm
 import requests
 from PIL import Image as PILImage
-from io import BytesIO as PIOBytesIO
+from io import BytesIO as PIOBytesIO # Usando o alias para evitar conflito com io.BytesIO
 
 # ===================== FUNÇÃO PARA LOGO COM PROPORÇÃO CORRETA =====================
 def carregar_logo():
@@ -23,7 +23,7 @@ def carregar_logo():
     proporcao = altura / largura
     largura_desejada = 200 
     altura_calculada = largura_desejada * proporcao
-    # CORRIGIDO: PIOBytesO para PIOBytesIO
+    # CORRIGIDO: Nome da classe PIOBytesIO
     return Image(PIOBytesIO(response.content), width=largura_desejada, height=altura_calculada)
 
 # ===================== CONFIGURAÇÃO =====================
@@ -49,6 +49,7 @@ with c1:
     valor_investido = st.number_input("Valor investido", min_value=100.0, value=500000.0, step=1000.0)
     st.markdown(f"<h3 style='color:#2E8B57'>R$ {valor_investido:,.2f}</h3>".replace(",", "X").replace(".", ",").replace("X", "."), unsafe_allow_html=True)
 with c2:
+    # A data_simulacao é usada no rodapé do PDF
     data_simulacao = st.date_input("Data da Simulação", datetime.date.today(), format="DD/MM/YYYY")
     tipo_cdb = st.selectbox("Tipo de CDB", ["Pré-fixado", "Pós-fixado (% do CDI)"])
 
@@ -75,11 +76,11 @@ with st.expander("Preferências do Investimento", expanded=True):
         with col_cdi2: perc_cdi = st.number_input("Percentual do CDI (%)", value=125.0, step=1.0)
         # O cálculo do CDB usa o CDI atual * o percentual simulado
         taxa_anual = taxa_cdi * (perc_cdi / 100)
-        dias_ano = 252
+        dias_ano = 252 # Dias úteis
     else:
         # A taxa CDI não afeta o CDB, apenas a taxa pré-fixada
         taxa_anual = st.number_input("Taxa pré-fixada anual (%)", value=17.00, step=0.05)
-        dias_ano = 360
+        dias_ano = 360 # Dias corridos/comerciais (convenção para prefixados)
         perc_cdi = 0.0 # Valor não relevante para Pré-fixado
 
 # ===================== CÁLCULOS CDB =====================
@@ -88,28 +89,31 @@ if data_vencimento.day < data_aplicacao.day: prazo_meses -= 1
 prazo_dias = (data_vencimento - data_aplicacao).days
 if prazo_dias <= 0: st.error("Data de resgate deve ser posterior"); st.stop()
 
+# Cálculo da taxa diária (exponencial)
 taxa_diaria = (1 + taxa_anual/100)**(1/dias_ano) - 1
 montante_bruto = valor_investido * (1 + taxa_diaria)**prazo_dias
 rendimento_bruto = montante_bruto - valor_investido
 
+# Cálculo do IOF (só se aplica nos primeiros 30 dias)
 rendimento_apos_iof = rendimento_bruto
 if prazo_dias < 30:
     iof_tab = [0.96,0.93,0.90,0.86,0.83,0.80,0.76,0.73,0.70,0.66,0.63,0.60,0.56,0.53,0.50,
                0.46,0.43,0.40,0.36,0.33,0.30,0.26,0.23,0.20,0.16,0.13,0.10,0.06,0.03,0.00]
     rendimento_apos_iof *= (1 - iof_tab[prazo_dias-1])
 
+# Cálculo do IR (regressivo)
 aliquota_ir = 22.5 if prazo_dias <= 180 else 20.0 if prazo_dias <= 360 else 17.5 if prazo_dias <= 720 else 15.0
 ir = rendimento_apos_iof * (aliquota_ir/100)
 montante_liquido = valor_investido + rendimento_apos_iof - ir
 rendimento_liquido = montante_liquido - valor_investido
 
 # ===================== CÁLCULOS BENCHMARKS =====================
-# Agora 'taxa_cdi' sempre existirá e representa o benchmark do CDI
-taxa_cdi_anual = taxa_cdi / 100 # Taxa CDI informada
+# 'taxa_cdi' já foi definida pelo usuário ou usa o padrão 14.90%
+taxa_cdi_anual = taxa_cdi / 100 
 taxa_poupanca_anual = 0.0617 # Proxy: 0.5% a.m. (6.17% a.a.)
 taxa_ibov_anual = 0.10 # Proxy: 10% a.a.
 
-# Taxas Diárias (Com base em 365 dias corridos)
+# Taxas Diárias (Com base em 365 dias corridos para Benchmarks)
 taxa_cdi_diaria_corrida = (1 + taxa_cdi_anual)**(1/365) - 1
 taxa_poupanca_diaria_corrida = (1 + taxa_poupanca_anual)**(1/365) - 1
 taxa_ibov_diaria_corrida = (1 + taxa_ibov_anual)**(1/365) - 1
@@ -281,6 +285,7 @@ def criar_pdf_perfeito():
     # 6. PREFERÊNCIAS DO INVESTIMENTO
     story.append(Paragraph("PREFERÊNCIAS DO INVESTIMENTO", styles['SectionTitle']))
     
+    # Ícones usados
     icone_valor = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>5</font>", styles['DataLabel'])
     icone_data = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>d</font>", styles['DataLabel'])
     icone_consideracoes = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>I</font>", styles['DataLabel'])
@@ -327,7 +332,7 @@ def criar_pdf_perfeito():
     VERDE_RENTABILIDADE_STR = '#2E8B57' 
     
     meses = prazo_meses 
-    # >>> LÓGICA ATUALIZADA: Mostrar taxa pré ou % do CDI
+    # Lógica de label ajustada para mostrar % CDI
     if tipo_cdb == "Pré-fixado":
         taxa_label = f"{taxa_anual:.2f}% a.a."
     else: 
@@ -354,9 +359,7 @@ def criar_pdf_perfeito():
     
     story.append(Spacer(1, 5*mm)) 
 
-    # 8. RESULTADO FINAL (Layout Corrigido + Borda Branca)
-    
-    # Novo Layout: Combinar Título e Dados em uma única tabela
+    # 8. RESULTADO FINAL 
     resultado_completo = [
         [Paragraph("<b>RESULTADO FINAL</b>", ParagraphStyle(name='ResultTitle', fontSize=10, fontName='Helvetica-Bold', alignment=1, textColor=colors.white, backColor=AZUL_MARINHO_FUNDO, leftPadding=15, rightPadding=15, topPadding=8, bottomPadding=8, spaceAfter=0)), 
          Paragraph("<b>RESULTADO FINAL</b>", ParagraphStyle(name='ResultTitle', fontSize=10, fontName='Helvetica-Bold', alignment=1, textColor=colors.white, backColor=AZUL_MARINHO_FUNDO, leftPadding=15, rightPadding=15, topPadding=8, bottomPadding=8, spaceAfter=0)),
@@ -370,31 +373,21 @@ def criar_pdf_perfeito():
     t_res_final.hAlign = 'CENTER'
 
     t_res_final.setStyle(TableStyle([
-        # Mesclar células para o título (o fundo azul marinho do topo já cobre)
         ('SPAN', (0,0), (2,0)), 
-        
-        # Estilo da Linha do Título (Resultado Final)
         ('BACKGROUND', (0,0), (2,0), AZUL_MARINHO_FUNDO), 
-        # Borda Branca de 1pt ABAIXO do título
         ('LINEBELOW', (0,0), (2,0), 1, colors.white), 
-
-        # Estilo da Linha de Rótulos (Valor Bruto, Impostos, Valor Líquido)
         ('BACKGROUND', (0,1), (2,1), AZUL_MARINHO_FUNDO), 
         ('TEXTCOLOR', (0,1), (2,1), colors.white),
         ('FONTSIZE', (0,1), (2,1), 10),
         ('FONTNAME', (0,1), (2,1), 'Helvetica-Bold'),
         ('TOPPADDING', (0,1), (2,1), 5),
         ('BOTTOMPADDING', (0,1), (2,1), 5),
-        
-        # Estilo da Linha de Valores
         ('BACKGROUND', (0,2), (2,2), AZUL_MARINHO_FUNDO), 
         ('TEXTCOLOR', (0,2), (2,2), colors.white),
         ('FONTSIZE', (0,2), (2,2), 16),
         ('FONTNAME', (0,2), (2,2), 'Helvetica-Bold'),
         ('TOPPADDING', (0,2), (2,2), 10),
         ('BOTTOMPADDING', (0,2), (2,2), 10),
-        
-        # Alinhamentos
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ('GRID', (0,0), (-1,-1), 0, colors.transparent),
     ]))
@@ -406,7 +399,6 @@ def criar_pdf_perfeito():
     # 9. FUNDAMENTOS DO CDB 
     story.append(Paragraph("FUNDAMENTOS DO CDB", styles['SectionTitle'])) 
     
-    # Conteúdo de fundamentos com negrito ajustado
     fundamentos_texto = (
         "O <b>CDB</b> é um título de renda fixa emitido por bancos. É uma escolha segura por contar com a "
         "garantia do <b>FGC</b> (Fundo Garantidor de Créditos), que cobre até R$ 250.000 por CPF/instituição. "
@@ -423,23 +415,72 @@ def criar_pdf_perfeito():
     # 10. PROJEÇÃO DA RENTABILIDADE (Gráfico com Benchmarks)
     story.append(Paragraph("PROJEÇÃO DA RENTABILIDADE BRUTA vs. BENCHMARKS", styles['SectionTitle']))
     
-    # É necessário gerar o gráfico novamente com as linhas de benchmarks dentro da função
-    # Para o PDF, usaremos a imagem gerada pelo Matplotlib com os benchmarks
+    # Adicionando o gráfico gerado
     img = Image(grafico_png(), width=180*mm, height=90*mm)
     img.hAlign = 'CENTER'
     story.append(img)
     
     # Adicionando uma nota sobre os proxies de benchmarks
     nota_benchmarks = (
-        # >>> CDI atualizado no texto do benchmark
         f"Benchmarks: CDI ({taxa_cdi:.2f}% a.a.), Poupança (Proxy 6.17% a.a.) e IBOV (Proxy 10.00% a.a.). "
         "Projeção baseada em taxas atuais, podendo variar conforme mercado. Rentabilidades dos benchmarks são brutas (sem IR)."
     )
     
     story.append(Paragraph(nota_benchmarks, 
-                           ParagraphStyle(name='GraphNote', fontSize=9, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=20*mm)))
+                           ParagraphStyle(name='GraphNote', fontSize=9, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=10*mm))) 
 
-    # 11. Rodapé 
+    # =========================================================================
+    # 11. NOVO BLOCO: COMPARAÇÃO DE RESULTADOS BRUTOS (Solicitado pelo usuário)
+    # =========================================================================
+    
+    story.append(Paragraph("COMPARATIVO DE RESULTADOS BRUTOS (No Vencimento)", styles['SectionTitle'])) 
+
+    # Valores brutos finais
+    valor_bruto_cdb = montante_bruto
+    valor_bruto_cdi = bruto_cdi_graf[-1] 
+    valor_bruto_poupanca = bruto_poupanca_graf[-1]
+    valor_bruto_ibov = bruto_ibov_graf[-1]
+
+    # Determinando a cor de destaque (verde para o maior valor)
+    valores_comparacao = [valor_bruto_cdb, valor_bruto_cdi, valor_bruto_poupanca, valor_bruto_ibov]
+    max_valor = max(valores_comparacao)
+    
+    # Função auxiliar para formatar com cor
+    def formatar_valor_comparacao(valor):
+        cor = '#2E8B57' if valor == max_valor else '#333333'
+        return Paragraph(f"<b><font size='12' color='{cor}'>{brl_pdf(valor)}</font></b>", 
+                         ParagraphStyle(name='CompValue', alignment=1, fontName='Helvetica'))
+
+    dados_comparacao = [
+        ["CDB (Simulado)", "CDI (Benchmark)", "Poupança (Benchmark)", "IBOV (Proxy)"],
+        [formatar_valor_comparacao(valor_bruto_cdb), 
+         formatar_valor_comparacao(valor_bruto_cdi),
+         formatar_valor_comparacao(valor_bruto_poupanca),
+         formatar_valor_comparacao(valor_bruto_ibov)]
+    ]
+    
+    colWidths_comp = [total_width/4] * 4
+    t_comparacao = Table(dados_comparacao, colWidths=colWidths_comp)
+    t_comparacao.hAlign = 'CENTER'
+
+    t_comparacao.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f0f0f0')), # Fundo cinza para os rótulos
+        ('TEXTCOLOR', (0,0), (-1,0), colors.HexColor('#333333')),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+        ('BACKGROUND', (0,1), (-1,1), colors.white), 
+    ]))
+    
+    story.append(t_comparacao)
+    
+    # Espaçamento final antes do rodapé
+    story.append(Spacer(1, 10*mm)) 
+    
+    # 12. Rodapé 
     story.append(Paragraph(f"Simulação elaborada por <b>{nome_assessor}</b> em {data_simulacao.strftime('%d/%m/%Y')}", styles['Footer']))
 
 
@@ -451,6 +492,8 @@ def criar_pdf_perfeito():
 st.markdown("---")
 if st.button("BAIXAR PROPOSTA PREMIUM", type="primary", use_container_width=True):
     with st.spinner("Gerando sua proposta premium..."):
+        # É necessário garantir que as variáveis do gráfico (bruto_cdi_graf, etc.) estejam populadas
+        # O cálculo é feito no Streamlit display e reutilizado aqui, o que está correto.
         pdf_data = criar_pdf_perfeito()
         b64 = base64.b64encode(pdf_data).decode()
         nome_arq = f"Proposta_CDB_{nome_cliente.replace(' ', '_')}.pdf"
