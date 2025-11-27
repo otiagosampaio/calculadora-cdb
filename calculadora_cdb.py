@@ -151,7 +151,7 @@ def grafico_png():
     buf.seek(0)
     return buf
 
-# ===================== PDF 100% IGUAL AO EXEMPLO (Final com Tabela Limitada) =====================
+# ===================== PDF 100% IGUAL AO EXEMPLO (Final com Preferências Corrigidas) =====================
 def criar_pdf_perfeito():
     # 1. Configuração do Documento
     buffer = BytesIO()
@@ -171,6 +171,9 @@ def criar_pdf_perfeito():
     styles.add(ParagraphStyle(name='DataLabel', fontSize=9, fontName='Helvetica', textColor=colors.HexColor('#666666'), alignment=0))
     styles.add(ParagraphStyle(name='DataValue', fontSize=11, fontName='Helvetica-Bold', textColor=colors.HexColor('#333333'), alignment=0))
     styles.add(ParagraphStyle(name='Footer', fontSize=9, alignment=1, textColor=colors.HexColor('#666666')))
+    
+    # Novo estilo para os valores dentro das caixas de Preferências
+    styles.add(ParagraphStyle(name='PrefValue', fontSize=12, fontName='Helvetica-Bold', textColor=colors.HexColor('#333333'), alignment=0, spaceBefore=3)) 
     
     brl_pdf = lambda v: f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     
@@ -202,14 +205,11 @@ def criar_pdf_perfeito():
          Paragraph(tipo_cdb.split('(')[0].strip(), styles['DataValue'])] 
     ]
     
-    # 🎯 AJUSTE DA LARGURA DA TABELA: 
-    # Largura total disponível = A4[0] - (leftMargin + rightMargin) = 210mm - 30mm = 180mm.
-    # O cálculo garante que a soma das larguras das colunas seja exatamente 180mm.
     total_width = A4[0] - 30*mm 
     colWidths = [total_width * 0.22, total_width * 0.28, total_width * 0.22, total_width * 0.28] 
     t_dados = Table(data_formatada, colWidths=colWidths)
     
-    t_dados.hAlign = 'LEFT' # Garante que a tabela se inicie no alinhamento esquerdo da margem.
+    t_dados.hAlign = 'LEFT' 
 
     t_dados.setStyle(TableStyle([
         ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
@@ -222,16 +222,55 @@ def criar_pdf_perfeito():
     story.append(t_dados)
     story.append(Spacer(1, 15*mm))
 
-    # 6. PREFERÊNCIAS DO INVESTIMENTO
+    # 6. PREFERÊNCIAS DO INVESTIMENTO (Ajustado para o layout de 3 colunas)
     story.append(Paragraph("PREFERÊNCIAS DO INVESTIMENTO", styles['SectionTitle']))
     
-    # Simulação da caixa de preferências com texto simples formatado
-    story.append(Paragraph(f"<b>5</b> <font size='8'>Valor aplicado</font> | <b>{brl_pdf(valor_investido)}</b>", 
-                           ParagraphStyle(name='Pref1', fontSize=10, fontName='Helvetica', spaceAfter=1*mm, textColor=colors.HexColor('#666666'), leftIndent=15, firstLineIndent=-15)))
-    story.append(Paragraph(f"<b>z/b a</b> <font size='8'>Período</font> | <b>{data_aplicacao.strftime('%d/%m/%Y')} a {data_vencimento.strftime('%d/%m/%Y')}</b>",
-                           ParagraphStyle(name='Pref2', fontSize=10, fontName='Helvetica', spaceAfter=1*mm, textColor=colors.HexColor('#666666'), leftIndent=15, firstLineIndent=-15)))
-    story.append(Paragraph(f"<b>I</b> <font size='8'>Considerações</font> | <b>IR, IOF</b>",
-                           ParagraphStyle(name='Pref3', fontSize=10, fontName='Helvetica-Bold', spaceAfter=20*mm, textColor=colors.HexColor('#666666'), leftIndent=15, firstLineIndent=-15)))
+    # 6.1 Definição dos Ícones e Labels (Usando ZapfDingbats para simular os ícones)
+    icone_valor = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>5</font>", styles['DataLabel'])
+    icone_data = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>d</font>", styles['DataLabel'])
+    icone_consideracoes = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>I</font>", styles['DataLabel'])
+    
+    # Conteúdo da Tabela de Preferências
+    prefs_data = [
+        # Linha 1: Ícone + Rótulo (Valor aplicado | Data do Vencimento | Considerações)
+        [icone_valor, Paragraph("Valor aplicado", styles['DataLabel']), 
+         icone_data, Paragraph("Data do Vencimento", styles['DataLabel']), 
+         icone_consideracoes, Paragraph("Considerações", styles['DataLabel'])],
+        
+        # Linha 2: Valores
+        [Spacer(1,1), Paragraph(brl_pdf(valor_investido), styles['PrefValue']), 
+         Spacer(1,1), Paragraph(data_vencimento.strftime('%d/%m/%Y'), styles['PrefValue']), 
+         Spacer(1,1), Paragraph("IR, IOF", styles['PrefValue'])]
+    ]
+    
+    # ColWidths: 6 colunas, distribuídas em 3 grupos de (Ícone Pequeno + Conteúdo Maior)
+    largura_pref = total_width / 3
+    colWidths_prefs = [8*mm, largura_pref - 8*mm, 8*mm, largura_pref - 8*mm, 8*mm, largura_pref - 8*mm]
+    
+    t_prefs = Table(prefs_data, colWidths=colWidths_prefs)
+    t_prefs.hAlign = 'LEFT'
+    
+    t_prefs.setStyle(TableStyle([
+        ('GRID', (0,0), (1,1), 0.5, colors.lightgrey), # Caixa 1
+        ('GRID', (2,0), (3,1), 0.5, colors.lightgrey), # Caixa 2
+        ('GRID', (4,0), (5,1), 0.5, colors.lightgrey), # Caixa 3
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('LEFTPADDING', (0,0), (-1,-1), 5),
+        ('RIGHTPADDING', (0,0), (-1,-1), 2),
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        
+        # Alinhar ícones verticalmente
+        ('VALIGN', (0,0), (0,1), 'TOP'),
+        ('VALIGN', (2,0), (2,1), 'TOP'),
+        ('VALIGN', (4,0), (4,1), 'TOP'),
+    ]))
+    
+    story.append(t_prefs)
+    
+    # 6.2 Linha divisória para separar o bloco PREFERÊNCIAS
+    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=20))
 
 
     # 7. PROJEÇÃO DA RENTABILIDADE (Gráfico)
@@ -243,6 +282,7 @@ def criar_pdf_perfeito():
     story.append(Paragraph("Projeção baseada em taxas atuais, podendo variar conforme mercado", 
                            ParagraphStyle(name='GraphNote', fontSize=9, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=20*mm)))
 
+    # ... (Restante do bloco RESULTADO FINAL e Rodapé) ...
 
     # 8. RESULTADO FINAL 
     resultado = [
