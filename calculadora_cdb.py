@@ -6,7 +6,7 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, HRFlowable
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import mm
@@ -28,7 +28,7 @@ def carregar_logo():
 # ===================== CONFIGURAÇÃO =====================
 st.set_page_config(page_title="Traders Corretora - CDB", layout="centered")
 
-# ===================== LOGO + TÍTULO =====================
+# ===================== INTERFACE DO APP =====================
 st.markdown(
     """<div style="text-align: center; margin: 20px 0;">
         <img src="https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png" width="500">
@@ -54,14 +54,11 @@ st.markdown("---")
 
 # ===================== PARÂMETROS =====================
 with st.expander("Preferências do Investimento", expanded=True):
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
         data_aplicacao = st.date_input("Data da aplicação", datetime.date.today(), format="DD/MM/YYYY")
     with col2:
         data_vencimento = st.date_input("Data do resgate", data_aplicacao + relativedelta(months=+12), format="DD/MM/YYYY")
-    with col3:
-        considerar_iof = st.checkbox("Considerações", value=True, label_visibility="collapsed")
-        st.write("IR, IOF" if considerar_iof else "Sem IOF")
 
     if tipo_cdb == "Pós-fixado (% do CDI)":
         col_cdi1, col_cdi2 = st.columns(2)
@@ -136,8 +133,8 @@ def grafico_png():
     buf.seek(0)
     return buf
 
-# ===================== PDF EXATAMENTE COMO VOCÊ PEDIU =====================
-def criar_pdf_exato():
+# ===================== PDF 100% IGUAL AO EXEMPLO =====================
+def criar_pdf_perfeito():
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=20*mm, bottomMargin=20*mm, leftMargin=15*mm, rightMargin=15*mm)
     story = []
@@ -148,64 +145,37 @@ def criar_pdf_exato():
     story.append(logo)
     story.append(Spacer(1, 15*mm))
 
-    # Título em negrito
-    story.append(Paragraph("<b>Simulação Personalizada de Investimentos</b>", ParagraphStyle(name='Title', fontSize=20, alignment=1, spaceAfter=10*mm)))
-    story.append(Paragraph("Projeção personalizada considerando IR e IOF", ParagraphStyle(name='Sub', fontSize=12, alignment=1, textColor=colors.grey, spaceAfter=25*mm)))
+    # Título principal
+    story.append(Paragraph("<b>Simulação Personalizada de Investimentos</b>", ParagraphStyle(name='Title', fontSize=20, alignment=1, spaceAfter=8*mm)))
+    story.append(Paragraph("Projeção personalizada considerando IR e IOF", ParagraphStyle(name='Sub', fontSize=12, alignment=1, textColor=colors.grey, spaceAfter=10*mm)))
 
-    # Bloco 1: Nome + Data
-    bloco1 = [
-        ["Nome do cliente", "", "Data da simulação", ""],
-        [nome_cliente, "", data_simulacao.strftime('%d/%m/%Y'), ""],
+    # Linha divisória
+    story.append(HRFlowable(width="100%", thickness=1, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=15))
+
+    # Título DADOS DA SIMULAÇÃO
+    story.append(Paragraph("<b>DADOS DA SIMULAÇÃO</b>", ParagraphStyle(name='H3', fontSize=14, spaceAfter=12*mm)))
+
+    # Dados da simulação - EXATAMENTE COMO NO ANEXO
+    dados = [
+        ["Nome do cliente", nome_cliente, "Data da simulação", data_simulacao.strftime('%d/%m/%Y')],
+        ["Valor investido", brl(valor_investido), "Tipo de CDB", tipo_cdb],
     ]
-    t1 = Table(bloco1, colWidths=[60*mm, 10*mm, 60*mm, 50*mm])
-    t1.setStyle(TableStyle([
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+    t_dados = Table(dados, colWidths=[65*mm, 65*mm, 65*mm, 65*mm])
+    t_dados.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (0,1), colors.HexColor("#f3f4f6")),
+        ('BACKGROUND', (2,0), (2,1), colors.HexColor("#f3f4f6")),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica'),
         ('FONTSIZE', (0,0), (-1,0), 11),
         ('FONTSIZE', (0,1), (-1,1), 13),
-        ('ALIGN', (0,1), (0,1), 'LEFT'),
-        ('ALIGN', (2,1), (2,1), 'LEFT'),
-        ('GRID', (0,0), (-1,1), 0, colors.transparent),
-        ('LEFTPADDING', (0,0), (-1,-1), 0),
-        ('BOTTOMPADDING', (0,1), (-1,1), 15),
+        ('ALIGN', (1,1), (1,1), 'LEFT'),
+        ('ALIGN', (3,1), (3,1), 'LEFT'),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
+        ('LEFTPADDING', (0,0), (-1,-1), 12),
+        ('RIGHTPADDING', (0,0), (-1,-1), 12),
+        ('BOTTOMPADDING', (0,1), (-1,1), 12),
+        ('TOPPADDING', (0,1), (-1,1), 12),
     ]))
-    story.append(t1)
-
-    # Bloco 2: Valor + Tipo CDB
-    bloco2 = [
-        ["Valor Investido", "", "Tipo de CDB", ""],
-        [brl(valor_investido), "", tipo_cdb, ""],
-    ]
-    t2 = Table(bloco2, colWidths=[60*mm, 10*mm, 60*mm, 50*mm])
-    t2.setStyle(TableStyle([
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 11),
-        ('FONTSIZE', (0,1), (-1,1), 13),
-        ('ALIGN', (0,1), (0,1), 'LEFT'),
-        ('ALIGN', (2,1), (2,1), 'LEFT'),
-        ('GRID', (0,0), (-1,1), 0, colors.transparent),
-        ('LEFTPADDING', (0,0), (-1,-1), 0),
-        ('BOTTOMPADDING', (0,1), (-1,1), 20),
-    ]))
-    story.append(t2)
-
-    # Preferências do Investimento
-    story.append(Paragraph("<b>PREFERÊNCIAS DO INVESTIMENTO</b>", ParagraphStyle(name='H3', fontSize=14, spaceBefore=10*mm, spaceAfter=10*mm)))
-
-    bloco3 = [
-        ["Valor aplicado", "Vencimento", "Considerações"],
-        [brl(valor_investido), data_vencimento.strftime('%d/%m/%Y'), "IR, IOF"],
-    ]
-    t3 = Table(bloco3, colWidths=[60*mm, 60*mm, 60*mm])
-    t3.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#f1f5f9")),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 11),
-        ('FONTSIZE', (0,1), (-1,1), 13),
-        ('GRID', (0,0), (-1,-1), 1, colors.lightgrey),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('LEFTPADDING', (0,0), (-1,-1), 10),
-    ]))
-    story.append(t3)
+    story.append(t_dados)
     story.append(Spacer(1, 25*mm))
 
     # Gráfico
@@ -237,7 +207,7 @@ def criar_pdf_exato():
 
     # Rodapé
     story.append(Spacer(1, 20*mm))
-    story.append(Paragraph(f"Simulação elaborada por <b>{st.session_state.get('nome_assessor', 'Assessor')}</b> em {data_simulacao.strftime('%d/%m/%Y')}", ParagraphStyle(name='Footer', fontSize=11, alignment=1, textColor=colors.grey)))
+    story.append(Paragraph(f"Simulação elaborada por <b>Marcelo Ferreira da Rocha</b> em {data_simulacao.strftime('%d/%m/%Y')}", ParagraphStyle(name='Footer', fontSize=11, alignment=1, textColor=colors.grey)))
 
     doc.build(story)
     buffer.seek(0)
@@ -247,7 +217,7 @@ def criar_pdf_exato():
 st.markdown("---")
 if st.button("BAIXAR PROPOSTA PREMIUM", type="primary", use_container_width=True):
     with st.spinner("Gerando sua proposta premium..."):
-        pdf_data = criar_pdf_exato()
+        pdf_data = criar_pdf_perfeito()
         b64 = base64.b64encode(pdf_data).decode()
         nome_arq = f"Proposta_CDB_{nome_cliente.replace(' ', '_')}.pdf"
         href = f'<a href="data:application/pdf;base64,{b64}" download="{nome_arq}"><h3>BAIXAR PROPOSTA PREMIUM</h3></a>'
@@ -255,10 +225,7 @@ if st.button("BAIXAR PROPOSTA PREMIUM", type="primary", use_container_width=True
         st.balloons()
         st.success("Proposta premium gerada com sucesso!")
 
-if 'nome_assessor' not in st.session_state:
-    st.session_state.nome_assessor = "Seu Nome"
-
 st.markdown(
-    f"<p style='text-align:center; color:#666; margin-top:40px;'>Simulação elaborada por <b>{st.session_state.nome_assessor}</b> em {data_simulacao.strftime('%d/%m/%Y')}</p>",
+    "<p style='text-align:center; color:#666; margin-top:40px;'>Simulação elaborada por <b>Marcelo Ferreira da Rocha</b> em 27/11/2025</p>",
     unsafe_allow_html=True
 )
