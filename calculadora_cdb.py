@@ -95,11 +95,11 @@ for m in range(prazo_meses + 1):
     data_temp += relativedelta(months=1)
 
 fig, ax = plt.subplots(figsize=(12, 6))
-ax.plot(datas_graf, bruto_graf, label="Montante Bruto", color="#6B48FF", linewidth=4)
-ax.plot(datas_graf, liquido_graf, label="Montante Líquido (após IR)", color="#2E8B57", linewidth=4, linestyle="--")
+ax.plot(datas_graf, bruto_graf, label="Montante Bruto", color="#6B48FF", linewidth=5)
+ax.plot(datas_graf, liquido_graf, label="Montante Líquido (após IR)", color="#2E8B57", linewidth=5, linestyle="--")
 ax.set_title("Evolução do Investimento", fontsize=18, fontweight="bold", color="#222", pad=20)
 ax.set_ylabel("Valor em R$", fontsize=12)
-ax.legend(fontsize=12, fancybox=True, shadow=True)
+ax.legend(fontsize=12, fancybox=True, shadow=True, loc="upper left")
 ax.grid(True, alpha=0.3)
 ax.xaxis.set_major_formatter(mdates.DateFormatter('%b/%Y'))
 ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
@@ -123,51 +123,57 @@ def grafico_png():
     buf.seek(0)
     return buf
 
-# ===================== PDF COM REPORTLAB (100% FUNCIONA!) =====================
-def criar_pdf_reportlab():
+# ===================== PDF PREMIUM (igual à imagem que você aprovou) =====================
+def criar_pdf_premium():
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm)
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=1.5*cm, bottomMargin=2*cm, leftMargin=2*cm, rightMargin=2*cm)
     styles = getSampleStyleSheet()
+
+    # Estilos customizados
+    estilo_titulo = ParagraphStyle(name='TituloCustom', fontSize=28, textColor=colors.HexColor("#6B48FF"), alignment=1, spaceAfter=20)
+    estilo_cliente = ParagraphStyle(name='Cliente', fontSize=32, textColor=colors.HexColor("#6B48FF"), alignment=1, fontName="Helvetica-Bold", spaceAfter=10)
+    estilo_sub = ParagraphStyle(name='Sub', fontSize=14, textColor=colors.grey, alignment=1, spaceAfter=30)
+
     story = []
 
     # Logo
-    logo = Image("https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png", width=180, height=60)
+    logo = Image("https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png", width=160, height=50)
     logo.hAlign = 'CENTER'
     story.append(logo)
     story.append(Spacer(1, 20))
 
     # Título
-    titulo = Paragraph("SIMULAÇÃO DE INVESTIMENTO", styles['Title'])
-    titulo.alignment = 1  # centro
-    story.append(titulo)
-    story.append(Spacer(1, 20))
-
-    # Cliente
-    cliente_style = ParagraphStyle(name='Cliente', fontSize=24, textColor=colors.HexColor("#6B48FF"), alignment=1)
-    story.append(Paragraph(nome_cliente.upper(), cliente_style))
-    story.append(Paragraph(f"Simulação elaborada por <b>{nome_assessor}</b> • {data_simulacao.strftime('%d/%m/%Y')}", styles['Normal']))
+    story.append(Paragraph("SIMULAÇÃO DE INVESTIMENTO", estilo_titulo))
     story.append(Spacer(1, 30))
 
-    # Resultados em tabela
+    # Cliente em destaque
+    story.append(Paragraph(nome_cliente.upper(), estilo_cliente))
+    story.append(Paragraph(f"Simulação elaborada por <b>{nome_assessor}</b> • {data_simulacao.strftime('%d/%m/%Y')}", estilo_sub))
+    story.append(Spacer(1, 40))
+
+    # Caixa de resultados
     data = [
-        ["", "Valor"],
+        ["Descrição", "Valor"],
         ["Valor Investido", brl(investimento)],
-        ["Montante Bruto", brl(montante_bruto)],
-        ["<font color='#2E8B57'><b>Montante Líquido</b></font>", f"<font color='#2E8B57'><b>{brl(montante_liquido)}</b></font>"],
+        ["Montante Bruto", f"<font color='#6B48FF'><b>{brl(montante_bruto)}</b></font>"],
+        ["Montante Líquido", f"<font color='#2E8B57'><b>{brl(montante_liquido)}</b></font>"],
         ["Rendimento Líquido", f"<font color='#2E8B57'><b>+{brl(rendimento_liquido)}</b></font>"],
         ["Alíquota de IR", f"{aliquota_ir}%"],
     ]
-    tabela = Table(data, colWidths=[300, 150])
+    tabela = Table(data, colWidths=[300, 180])
     tabela.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#6B48FF")),
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('GRID', (0,0), (-1,-1), 1, colors.HexColor("#6B48FF")),
-        ('BACKGROUND', (0,2), (-1,3), colors.HexColor("#f0fff0")),
+        ('FONTSIZE', (0,0), (-1,0), 14),
+        ('GRID', (0,0), (-1,-1), 1.5, colors.HexColor("#6B48FF")),
+        ('BACKGROUND', (0,3), (-1,4), colors.HexColor("#f0fff0")),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('FONTSIZE', (0,1), (-1,-1), 13),
     ]))
     story.append(tabela)
-    story.append(Spacer(1, 30))
+    story.append(Spacer(1, 40))
 
     # Gráfico
     img_data = grafico_png()
@@ -176,7 +182,7 @@ def criar_pdf_reportlab():
     story.append(img)
 
     # Rodapé
-    story.append(Spacer(1, 40))
+    story.append(Spacer(1, 50))
     rodape = Paragraph("Traders Corretora • Assessoria de Investimentos<br/>Esta é uma simulação. Rentabilidade passada não é garantia de resultados futuros.", styles['Normal'])
     rodape.alignment = 1
     story.append(rodape)
@@ -187,9 +193,9 @@ def criar_pdf_reportlab():
 
 # ===================== BOTÃO PDF =====================
 st.markdown("---")
-if st.button("GERAR PROPOSTA (PDF)", type="primary", use_container_width=True):
+if st.button("GERAR PROPOSTA PREMIUM (PDF)", type="primary", use_container_width=True):
     with st.spinner("Gerando sua proposta premium..."):
-        pdf_data = criar_pdf_reportlab()
+        pdf_data = criar_pdf_premium()
         b64 = base64.b64encode(pdf_data).decode()
         nome_arq = f"Proposta_CDB_{nome_cliente.replace(' ', '_')}_{data_simulacao.strftime('%d%m%Y')}.pdf"
         href = f'<a href="data:application/pdf;base64,{b64}" download="{nome_arq}"><h3>BAIXAR PROPOSTA PREMIUM</h3></a>'
