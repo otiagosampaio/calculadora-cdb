@@ -30,13 +30,15 @@ st.set_page_config(page_title="Traders Corretora - CDB", layout="centered")
 
 # ===================== LOGO + TÍTULO (Streamlit Display) =====================
 st.markdown(
-    """<div style="text-align: center; margin: 20px 0;">
+    """<div style="text-align: center; margin: 10px 0;">
         <img src="https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png" width="500">
     </div>""",
     unsafe_allow_html=True
 )
 st.markdown("<h2 style='text-align: center; color: #222;'>Calculadora de CDB Pré e Pós-fixado</h2>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #666; font-size: 17px; margin-bottom: 30px;'>Simulação personalizada com IR regressivo e IOF</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #666; font-size: 17px; margin-bottom: 30px;'>Simule OS rendimentos com a calculadora de CDB e descubra o retorno esperado para o cliente!
+
+</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ===================== DADOS DO CLIENTE =====================
