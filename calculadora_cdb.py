@@ -182,6 +182,7 @@ def criar_pdf_perfeito():
     
     # 4. Título Principal
     story.append(Paragraph("Simulação de Investimento - CDB Pré e Pós-fixado", styles['TitlePDF']))
+    story.append(Spacer(1, 3*mm))
     story.append(Paragraph("Projeção personalizada considerando IR e IOF", styles['SubTitlePDF']))
     
     # 🎯 AJUSTE 3: Inserir linha divisória
