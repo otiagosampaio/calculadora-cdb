@@ -151,7 +151,7 @@ def grafico_png():
     buf.seek(0)
     return buf
 
-# ===================== PDF 100% IGUAL AO EXEMPLO (Final) =====================
+# ===================== PDF 100% IGUAL AO EXEMPLO (Final com Tabela Limitada) =====================
 def criar_pdf_perfeito():
     # 1. Configuração do Documento
     buffer = BytesIO()
@@ -163,7 +163,7 @@ def criar_pdf_perfeito():
     AZUL_MARINHO_FUNDO = colors.HexColor("#0f172a") 
     
     styles.add(ParagraphStyle(name='TitlePDF', fontSize=18, fontName='Helvetica-Bold', alignment=1, spaceAfter=2*mm, textColor=colors.HexColor('#000000')))
-    styles.add(ParagraphStyle(name='SubTitlePDF', fontSize=10, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=10*mm)) # Ajuste de espaçamento para 10mm
+    styles.add(ParagraphStyle(name='SubTitlePDF', fontSize=10, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=10*mm)) 
     
     # Estilo do título de seção para alinhar à esquerda
     styles.add(ParagraphStyle(name='SectionTitle', fontSize=10, fontName='Helvetica-Bold', spaceAfter=5*mm, textColor=colors.HexColor('#333333'), alignment=0)) 
@@ -178,14 +178,13 @@ def criar_pdf_perfeito():
     logo = carregar_logo()
     logo.hAlign = 'CENTER'
     story.append(logo)
-    story.append(Spacer(1, 10*mm)) # 🎯 AJUSTE 2: Aumentado espaçamento pós-logo
+    story.append(Spacer(1, 10*mm)) 
     
     # 4. Título Principal
     story.append(Paragraph("Simulação de Investimento - CDB Pré e Pós-fixado", styles['TitlePDF']))
-    story.append(Spacer(1, 3*mm))
     story.append(Paragraph("Projeção personalizada considerando IR e IOF", styles['SubTitlePDF']))
     
-    # 🎯 AJUSTE 3: Inserir linha divisória
+    # Linha divisória
     story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=5, spaceAfter=10))
 
     # 5. DADOS DA SIMULAÇÃO
@@ -203,11 +202,14 @@ def criar_pdf_perfeito():
          Paragraph(tipo_cdb.split('(')[0].strip(), styles['DataValue'])] 
     ]
     
-    # A largura da tabela em 100% garante que ela se alinhe com as margens da página.
-    colWidths = [A4[0] * 0.22, A4[0] * 0.28, A4[0] * 0.22, A4[0] * 0.28] 
+    # 🎯 AJUSTE DA LARGURA DA TABELA: 
+    # Largura total disponível = A4[0] - (leftMargin + rightMargin) = 210mm - 30mm = 180mm.
+    # O cálculo garante que a soma das larguras das colunas seja exatamente 180mm.
+    total_width = A4[0] - 30*mm 
+    colWidths = [total_width * 0.22, total_width * 0.28, total_width * 0.22, total_width * 0.28] 
     t_dados = Table(data_formatada, colWidths=colWidths)
     
-    t_dados.hAlign = 'LEFT' # 🎯 AJUSTE 4: Garante que a tabela se inicie no alinhamento esquerdo da margem.
+    t_dados.hAlign = 'LEFT' # Garante que a tabela se inicie no alinhamento esquerdo da margem.
 
     t_dados.setStyle(TableStyle([
         ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
