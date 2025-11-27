@@ -5,16 +5,20 @@ from dateutil.relativedelta import relativedelta
 # ===================== CONFIGURAÇÃO DA PÁGINA =====================
 st.set_page_config(page_title="Traders Corretora - Calculadora CDB", layout="centered")
 
-# ===================== LOGO + TÍTULO =====================
-col_logo, col_titulo = st.columns([1, 5])
-with col_logo:
-    # Seu logo oficial direto do Google Drive (link corrigido para download direto)
-    st.image("https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png", width=360)
-with col_titulo:
-    st.markdown("<h1 style='margin-top: 25px; color: #6B48FF; font-weight: 800;'>traders</h1>", unsafe_allow_html=True)
-    st.markdown("<h2 style='color: #222; margin-top: -10px;'>Calculadora de CDB Pré e Pós-fixado</h2>", unsafe_allow_html=True)
+# ===================== LOGO CENTRALIZADO E GRANDE =====================
+st.markdown("<h2 style='text-align: center; color: #222; margin-bottom: 5px;'>Calculadora de CDB Pré e Pós-fixado</h2>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #555; font-size: 16px; margin-bottom: 30px;'>Simulação personalizada de renda fixa com imposto de renda regressivo e IOF</p>", unsafe_allow_html=True)
 
-st.markdown("Simulação personalizada de renda fixa com imposto de renda regressivo e IOF", unsafe_allow_html=True)
+# Logo centralizado e grande
+st.markdown(
+    f"""
+    <div style="display: flex; justify-content: center; margin: 30px 0;">
+        <img src="https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png" width="450">
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 st.markdown("---")
 
 # ===================== INFORMAÇÕES DO CLIENTE =====================
@@ -22,8 +26,8 @@ st.subheader("Dados da Simulação")
 
 col1, col2 = st.columns(2)
 with col1:
-    nome_cliente = st.text_input("Nome do Cliente", value="João Silva", help="Nome completo do cliente")
-    nome_assessor = st.text_input("Nome do Assessor", value="Seu Nome", help="Seu nome como assessor")
+    nome_cliente = st.text_input("Nome do Cliente", value="João Silva")
+    nome_assessor = st.text_input("Nome do Assessor", value="Seu Nome")
 with col2:
     data_simulacao = st.date_input("Data da Simulação", value=datetime.date.today())
 
@@ -33,8 +37,19 @@ st.markdown("---")
 with st.expander("Parâmetros do Investimento", expanded=True):
     col_a, col_b = st.columns(2)
     with col_a:
-        investimento = st.number_input("Valor investido (R$)", min_value=100.0, value=500000.0, step=1000.0, format="%.2f")
+        # Valor investido com formatação brasileira
+        investimento = st.number_input(
+            "Valor investido",
+            min_value=100.0,
+            value=500000.0,
+            step=1000.0,
+            format="%.2f",
+            help="Digite o valor em reais"
+        )
+        st.markdown(f"<p style='font-size: 20px; font-weight: bold; color: #2E8B57; margin-top: 10px;'>R$ {investimento:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), unsafe_allow_html=True)
+
         data_aplicacao = st.date_input("Data da aplicação", value=datetime.date.today())
+
     with col_b:
         data_vencimento = st.date_input("Data do resgate/vencimento", value=data_aplicacao + relativedelta(months=+12))
         considerar_iof = st.checkbox("Considerar IOF (resgate antes de 30 dias)", value=False)
@@ -97,9 +112,10 @@ st.markdown("---")
 st.markdown("<h2 style='text-align: center; color: #6B48FF;'>Resultado da Simulação</h2>", unsafe_allow_html=True)
 
 col1, col2, col3 = st.columns(3)
-col1.metric("Montante Bruto", f"R$ {montante_bruto:,.2f}")
-col2.metric("Rendimento Bruto", f"R$ {rendimento_bruto:,.2f}")
-col3.metric("Montante Líquido", f"R$ {montante_liquido:,.2f}", delta=f"+R$ {rendimento_liquido:,.2f}")
+col1.metric("Montante Bruto", f"R$ {montante_bruto:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+col2.metric("Rendimento Bruto", f"R$ {rendimento_bruto:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+col3.metric("Montante Líquido", f"R$ {montante_liquido:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), 
+            delta=f"+R$ {rendimento_liquido:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
 st.markdown("---")
 st.subheader("Detalhamento da Proposta")
@@ -117,19 +133,21 @@ with c1:
 
 with c2:
     if considerar_iof and prazo_dias < 30:
-        st.write(f"**IOF:** {(1-aliquota_iof):.0%} do rendimento")
+        st.write(f"**IOF aplicado:** {aliquota_iof:.0%}")
     st.write(f"**Alíquota IR:** {aliquota_ir}%")
-    st.write(f"**Imposto de Renda:** R$ {valor_ir:,.2f}")
-    st.write(f"**Rendimento líquido:** R$ {rendimento_liquido:,.2f}")
+    st.write(f"**Imposto de Renda:** R$ {valor_ir:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+    st.write(f"**Rendimento líquido:** R$ {rendimento_liquido:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
 # ===================== RODAPÉ =====================
 st.markdown("---")
 st.markdown(
-    f"<div style='text-align: center; padding: 20px; background-color: #f8f5ff; border-radius: 10px; margin-top: 20px;'>"
-    f"<p style='margin: 5px; font-size: 15px;'><strong>Simulação elaborada por {nome_assessor}</strong><br>"
-    f"em {data_simulacao.strftime('%d/%m/%Y')} para <strong>{nome_cliente}</strong></p>"
-    f"<p style='margin: 10px; color: #6B48FF; font-size: 18px; font-weight: bold;'>traders Corretora • Assessoria de Investimentos</p>"
-    f"</div>",
+    f"""
+    <div style="text-align: center; padding: 25px; background: linear-gradient(135deg, #f8f5ff, #f0e6ff); border-radius: 15px; margin: 30px 0;">
+        <p style="margin: 8px; font-size: 16px;"><strong>Simulação elaborada por {nome_assessor}</strong></p>
+        <p style="margin: 8px; color: #555;">em <strong>{data_simulacao.strftime('%d/%m/%Y')}</strong> para <strong>{nome_cliente}</strong></p>
+        <p style="margin: 20px 0 0 0; color: #6B48FF; font-size: 20px; font-weight: bold;">Traders Corretora • Assessoria de Investimentos</p>
+    </div>
+    """,
     unsafe_allow_html=True
 )
 
