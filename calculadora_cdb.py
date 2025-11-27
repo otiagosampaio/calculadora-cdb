@@ -84,7 +84,7 @@ st.markdown(
     </div>""",
     unsafe_allow_html=True
 )
-# 1. Título principal alterado para "Calculadora de Investimentos"
+# Título principal alterado para "Calculadora de Investimentos"
 st.markdown("<h2 style='text-align: center; color: #222;'>Calculadora de Investimentos</h2>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #666; font-size: 17px; margin-bottom: 30px;'>Simule rendimentos com a calculadora de CDB e descubra o retorno esperado para o cliente!</p>", unsafe_allow_html=True)
 st.markdown("---")
@@ -108,12 +108,9 @@ with c1:
     nome_cliente = st.text_input("Nome do Cliente", "João Silva")
     nome_assessor = st.text_input("Nome do Assessor", "Seu Nome")
 
-    # 2. Input de Valor Investido (Ajustado o label para aproximar do input)
-    st.markdown("Valor investido", unsafe_allow_html=True) # Usando markdown para o label
-    
-    # Substituição de st_keyup por st.text_input nativo
+    # AJUSTE: Usando o label nativo do st.text_input para eliminar o espaçamento extra do st.markdown
     valor_investido_str = st.text_input(
-        label=" ", # Label vazio para usar o markdown acima
+        label="Valor investido", # <-- Ajuste feito aqui
         value=st.session_state['valor_input'], 
         placeholder="Digite o valor (Ex: 500000,00)",
         key="valor_bruto_input"
@@ -135,7 +132,7 @@ with c2:
     data_simulacao = st.date_input("Data da Simulação", datetime.date.today(), format="DD/MM/YYYY")
     tipo_cdb = st.selectbox("Tipo de CDB", ["Pré-fixado", "Pós-fixado (% do CDI)"])
 
-    # 3. Input de Taxa Movido para a Coluna da Direita (C2)
+    # Input de Taxa Movido para a Coluna da Direita (C2)
     # Verifica o tipo de CDB e exibe os inputs de taxa
     if tipo_cdb == "Pós-fixado (% do CDI)":
         taxa_cdi = st.number_input("Taxa CDI anual (Benchmark) (%)", value=taxa_cdi_mercado, step=0.05)
