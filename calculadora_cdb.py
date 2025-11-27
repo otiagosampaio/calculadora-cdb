@@ -14,8 +14,7 @@ import requests
 from PIL import Image as PILImage
 from io import BytesIO as PIOBytesIO 
 
-# Biblioteca que foi adicionada ao requirements.txt
-from streamlit_keyup import st_keyup
+# A biblioteca streamlit_keyup foi removida para resolver o ModuleNotFoundError.
 import re
 
 # ===================== FUNÇÃO PARA LOGO COM PROPORÇÃO CORRETA =====================
@@ -55,8 +54,11 @@ def formatar_moeda(valor_str):
             # Pega apenas a parte antes da vírgula e os 2 decimais
             inteiro, decimal = valor_sem_pontos.split(',')
             decimal = decimal[:2] # Limita a dois dígitos decimais
+            # Adiciona zeros se a parte decimal for menor que 2
+            decimal = decimal.ljust(2, '0') 
             valor_float = float(f"{inteiro}.{decimal}")
         else:
+            # Se não tem vírgula, assume que são reais inteiros
             valor_float = float(valor_sem_pontos)
 
         # Formatação final BRL (R$)
@@ -106,17 +108,22 @@ with c1:
     
     # Máscara de entrada para Valor Investido
     st.markdown("Valor investido")
-    # Usa st_keyup para leitura dinâmica de input
-    valor_investido_str = st_keyup(
-        label="", 
+    
+    # >>> Substituição de st_keyup por st.text_input nativo <<<
+    valor_investido_str = st.text_input(
+        label=" ", # Label vazio para usar o markdown acima
         value=st.session_state['valor_input'], 
-        placeholder="Digite o valor",
+        placeholder="Digite o valor (Ex: 500000,00)",
         key="valor_bruto_input"
     )
     
     # Aplica a formatação na string e atualiza o estado
+    # Isso garante que o campo de input sempre mostra o valor formatado
     valor_formatado_display = formatar_moeda(valor_investido_str)
-    st.session_state['valor_input'] = valor_formatado_display
+    
+    # Atualiza a sessão para manter o valor formatado no campo de input no próximo rerun
+    if valor_investido_str != valor_formatado_display:
+        st.session_state['valor_input'] = valor_formatado_display
     
     # Converte o valor formatado para float para os cálculos
     valor_investido = desformatar_moeda(valor_formatado_display)
