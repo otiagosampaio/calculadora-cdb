@@ -1,5 +1,5 @@
 streamlit
-streamlit-keyup # ESTA É A LINHA CRUCIAL
+streamlit-keyup 
 python-dateutil
 matplotlib
 reportlab
