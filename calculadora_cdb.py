@@ -1,11 +1,11 @@
 import streamlit as st
 import datetime
 from dateutil.relativedelta import relativedelta
-from fpdf import FPDF
 import base64
 from io import BytesIO
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from fpdf2 import FPDF  # <-- agora com suporte a Unicode
 
 # ===================== CONFIGURAÇÃO =====================
 st.set_page_config(page_title="Traders Corretora - CDB", layout="centered")
@@ -76,7 +76,7 @@ ir = rendimento_apos_iof * (aliquota_ir/100)
 montante_liquido = investimento + rendimento_apos_iof - ir
 rendimento_liquido = montante_liquido - investimento
 
-# ===================== GRÁFICO MATPLOTLIB =====================
+# ===================== GRÁFICO =====================
 st.markdown("### Evolução do Investimento")
 datas_graf, bruto_graf, liquido_graf = [], [], []
 data_temp = data_aplicacao
@@ -96,7 +96,7 @@ ax.plot(datas_graf, liquido_graf, label="Montante Líquido (após IR)", color="#
 ax.set_title("Evolução do Investimento", fontsize=18, fontweight="bold", color="#222", pad=20)
 ax.set_ylabel("Valor em R$", fontsize=12)
 ax.legend(fontsize=12, fancybox=True, shadow=True)
-ax.grid(True, alpha=0.3, color="#ddd")
+ax.grid(True, alpha=0.3)
 ax.xaxis.set_major_formatter(mdates.DateFormatter('%b/%Y'))
 ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
 plt.xticks(rotation=45)
@@ -112,7 +112,7 @@ col1.metric("Montante Bruto", brl(montante_bruto))
 col2.metric("Rendimento Bruto", brl(rendimento_bruto))
 col3.metric("Montante Líquido", brl(montante_liquido), delta=brl(rendimento_liquido))
 
-# ===================== PDF DESIGN PREMIUM =====================
+# ===================== PDF PREMIUM COM FPDF2 + UNICODE =====================
 def grafico_png():
     buf = BytesIO()
     plt.savefig(buf, format='png', dpi=300, bbox_inches='tight', facecolor='white')
@@ -123,8 +123,8 @@ class PDF(FPDF):
     def header(self):
         self.image("https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png", 15, 10, 50)
         self.set_fill_color(107, 72, 255)
-        self.rect(0, 35, 210, 8, 'F')
-        self.set_font("Helvetica", "B", 24)
+        self.rect(0, 35, 210, 10, 'F')
+        self.set_font("Helvetica", "B", 26)
         self.set_text_color(255, 255, 255)
         self.set_y(38)
         self.cell(0, 10, "SIMULAÇÃO DE INVESTIMENTO", ln=True, align="C")
@@ -134,47 +134,46 @@ class PDF(FPDF):
         self.set_y(-25)
         self.set_font("Helvetica", "I", 9)
         self.set_text_color(100, 100, 100)
-        self.cell(0, 10, "Traders Corretora • Assessoria de Investimentos • CNPJ 00.000.000/0001-00", align="C")
+        self.cell(0, 10, "Traders Corretora • Assessoria de Investimentos", align="C")
 
-def criar_pdf_luxo():
+def criar_pdf_premium():
     pdf = PDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
     # Cliente em destaque
-    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_font("Helvetica", "B", 22)
     pdf.set_text_color(107, 72, 255)
-    pdf.cell(0, 10, nome_cliente.upper(), ln=True, align="C")
-    pdf.set_font("Helvetica", "", 12)
+    pdf.cell(0, 15, nome_cliente.upper(), ln=True, align="C")
+    pdf.set_font("Helvetica", "", 13)
     pdf.set_text_color(80, 80, 80)
-    pdf.cell(0, 8, f"Simulação elaborada por {nome_assessor} • {data_simulacao.strftime('%d/%m/%Y')}", ln=True, align="C")
-    pdf.ln(15)
+    pdf.cell(0, 10, f"Simulação elaborada por {nome_assessor} • {data_simulacao.strftime('%d/%m/%Y')}", ln=True, align="C")
+    pdf.ln(20)
 
     # Caixa de resultados
     pdf.set_fill_color(248, 245, 255)
     pdf.set_draw_color(107, 72, 255)
-    pdf.set_line_width(1)
-    pdf.rect(15, pdf.get_y(), 180, 70, 'FD')
+    pdf.rect(15, pdf.get_y(), 180, 80, 'FD')
 
-    pdf.set_xy(20, pdf.get_y() + 10)
-    pdf.set_font("Helvetica", "B", 14)
+    pdf.set_xy(20, pdf.get_y() + 12)
+    pdf.set_font("Helvetica", "B", 15)
     pdf.set_text_color(107, 72, 255)
     pdf.cell(0, 10, "Resultado da Aplicação", ln=True)
 
     pdf.set_font("Helvetica", "", 13)
     pdf.set_text_color(50, 50, 50)
-    pdf.cell(0, 10, f"Valor Investido:          {brl(investimento)}", ln=True)
+    pdf.cell(0, 10, f"Valor Investido:           {brl(investimento)}", ln=True)
     pdf.set_text_color(107, 72, 255)
-    pdf.cell(0, 10, f"Montante Bruto:           {brl(montante_bruto)}", ln=True)
+    pdf.cell(0, 10, f"Montante Bruto:            {brl(montante_bruto)}", ln=True)
     pdf.set_text_color(46, 139, 87)
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 12, f"Montante Líquido:         {brl(montante_liquido)}", ln=True)
-    pdf.set_font("Helvetica", "B", 14)
-    pdf.cell(0, 10, f"Rendimento Líquido:       +{brl(rendimento_liquido)}", ln=True)
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.cell(0, 12, f"Montante Líquido:          {brl(montante_liquido)}", ln=True)
+    pdf.set_font("Helvetica", "B", 15)
+    pdf.cell(0, 10, f"Rendimento Líquido:        +{brl(rendimento_liquido)}", ln=True)
     pdf.set_font("Helvetica", "", 12)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 8, f"Alíquota de IR aplicada: {aliquota_ir}%", ln=True)
-    pdf.ln(15)
+    pdf.ln(20)
 
     # Gráfico
     png = grafico_png()
@@ -191,11 +190,11 @@ def criar_pdf_luxo():
     buffer.seek(0)
     return buffer.getvalue()
 
-# ===================== BOTÃO PDF LUXO =====================
+# ===================== BOTÃO PDF =====================
 st.markdown("---")
 if st.button("GERAR PROPOSTA PREMIUM (PDF)", type="primary", use_container_width=True):
     with st.spinner("Gerando sua proposta premium..."):
-        pdf_data = criar_pdf_luxo()
+        pdf_data = criar_pdf_premium()
         b64 = base64.b64encode(pdf_data).decode()
         nome_arq = f"Proposta_CDB_{nome_cliente.replace(' ', '_')}_{data_simulacao.strftime('%d%m%Y')}.pdf"
         href = f'<a href="data:application/pdf;base64,{b64}" download="{nome_arq}"><h3>BAIXAR PROPOSTA PREMIUM</h3></a>'
@@ -209,7 +208,7 @@ st.markdown(
     <div style="text-align:center; padding:30px; background:linear-gradient(135deg,#f5f0ff,#ede9ff); border-radius:20px; margin-top:40px;">
        <p style="font-size:18px;"><strong>Simulação elaborada por {nome_assessor}</strong><br>
        em <strong>{data_simulacao.strftime('%d/%m/%Y')}</strong> para <strong>{nome_cliente}</strong></p>
-       <p style="color:#6B48FF; font-size:22px; margin-top:20px;"><strong>Traders Corretora - Assessoria de Investimentos</strong></p>
+       <p style="color:#6B48FF; font-size:22px; margin-top:20px;"><strong>Traders Corretora • Assessoria de Investimentos</strong></p>
     </div>
     """,
     unsafe_allow_html=True
