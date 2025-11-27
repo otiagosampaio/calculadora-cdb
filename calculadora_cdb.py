@@ -23,7 +23,8 @@ def carregar_logo():
     proporcao = altura / largura
     largura_desejada = 200 
     altura_calculada = largura_desejada * proporcao
-    return Image(PIOBytesO(response.content), width=largura_desejada, height=altura_calculada)
+    # >>> CORREÇÃO DO ERRO: Corrigido PIOBytesO para PIOBytesIO
+    return Image(PIOBytesIO(response.content), width=largura_desejada, height=altura_calculada)
 
 # ===================== CONFIGURAÇÃO =====================
 st.set_page_config(page_title="Traders Corretora - CDB", layout="centered")
@@ -54,7 +55,7 @@ with c2:
 st.markdown("---")
 
 # ===================== PARÂMETROS =====================
-# >>> CORREÇÃO DO ERRO: Inicializar taxa_cdi para que esteja definida para os cálculos de benchmark.
+# Inicializar taxa_cdi para que esteja definida para os cálculos de benchmark.
 taxa_cdi = 13.65 
 
 with st.expander("Preferências do Investimento", expanded=True):
@@ -98,7 +99,6 @@ rendimento_liquido = montante_liquido - valor_investido
 
 # ===================== CÁLCULOS BENCHMARKS =====================
 # Definindo taxas anuais (usando 365 dias para benchmarks de calendário)
-# Agora 'taxa_cdi' sempre existirá.
 taxa_cdi_anual = taxa_cdi / 100 # Taxa CDI informada
 taxa_poupanca_anual = 0.0617 # Proxy: 0.5% a.m. (6.17% a.a.)
 taxa_ibov_anual = 0.10 # Proxy: 10% a.a.
@@ -110,7 +110,6 @@ taxa_ibov_diaria_corrida = (1 + taxa_ibov_anual)**(1/365) - 1
 
 # ===================== GRÁFICO (Streamlit) =====================
 st.markdown("### Projeção da Rentabilidade")
-# Removida a lista 'liquido_graf'
 datas_graf, bruto_graf = [], []
 bruto_cdi_graf, bruto_poupanca_graf, bruto_ibov_graf = [], [], [] 
 data_temp = data_aplicacao
@@ -126,7 +125,6 @@ for m in range(prazo_meses + 1):
     # Dados CDB
     datas_graf.append(data_temp)
     bruto_graf.append(mont)
-    # NÃO adiciona liquido_graf
     
     # Dados Benchmarks (compounding over calendar days 'dias')
     mont_cdi = valor_investido * (1 + taxa_cdi_diaria_corrida)**dias
@@ -153,7 +151,6 @@ if data_vencimento not in datas_graf:
 # Plotagem
 fig, ax = plt.subplots(figsize=(12, 6))
 ax.plot(datas_graf, bruto_graf, label="CDB Bruto", color="#6B48FF", linewidth=2, alpha=0.9)
-# ax.plot(datas_graf, liquido_graf, label="CDB Líquido", color="#2E8B57", linewidth=2) # LINHA REMOVIDA
 # Novas linhas de Benchmarks
 ax.plot(datas_graf, bruto_cdi_graf, label="Benchmark: CDI", color="#FF5733", linestyle="--", linewidth=1.5)
 ax.plot(datas_graf, bruto_poupanca_graf, label="Benchmark: Poupança", color="#337AFF", linestyle=":", linewidth=1.5)
