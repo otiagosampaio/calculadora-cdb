@@ -21,7 +21,7 @@ def carregar_logo():
     img = PILImage.open(PIOBytesIO(response.content))
     largura, altura = img.size
     proporcao = altura / largura
-    largura_desejada = 200 # 🎯 AJUSTE 1: Largura da logo dobrada (de 100 para 200)
+    largura_desejada = 200 
     altura_calculada = largura_desejada * proporcao
     return Image(PIOBytesIO(response.content), width=largura_desejada, height=altura_calculada)
 
@@ -132,7 +132,7 @@ plt.xticks(rotation=0, ha='center')
 plt.tight_layout()
 st.pyplot(fig)
 
-# ===================== RESULTADO FINAL =====================
+# ===================== RESULTADO FINAL (STREAMLIT) =====================
 st.markdown("---")
 st.markdown("<h2 style='text-align:center; color:#1e3a8a;'>Resultado Final</h2>", unsafe_allow_html=True)
 col1, col2, col3 = st.columns(3)
@@ -158,31 +158,23 @@ def criar_pdf_perfeito():
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=15*mm, bottomMargin=15*mm, leftMargin=15*mm, rightMargin=15*mm)
     story = []
     
-    # 2. Estilos Personalizados (COM ESPAÇAMENTO AUMENTADO)
+    # 2. Estilos Personalizados
     styles = getSampleStyleSheet()
     AZUL_MARINHO_FUNDO = colors.HexColor("#0f172a") 
     
-    # 🎯 Ajuste: Aumentando spaceAfter para 7*mm
     styles.add(ParagraphStyle(name='TitlePDF', fontSize=18, fontName='Helvetica-Bold', alignment=1, spaceAfter=7*mm, textColor=colors.HexColor('#000000')))
-    
     styles.add(ParagraphStyle(name='SubTitlePDF', fontSize=10, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=10*mm)) 
-    
-    # Estilo do título de seção para alinhar à esquerda
     styles.add(ParagraphStyle(name='SectionTitle', fontSize=10, fontName='Helvetica-Bold', spaceAfter=5*mm, textColor=colors.HexColor('#333333'), alignment=0)) 
-    
     styles.add(ParagraphStyle(name='DataLabel', fontSize=9, fontName='Helvetica', textColor=colors.HexColor('#666666'), alignment=0))
     styles.add(ParagraphStyle(name='DataValue', fontSize=11, fontName='Helvetica-Bold', textColor=colors.HexColor('#333333'), alignment=0))
     styles.add(ParagraphStyle(name='Footer', fontSize=9, alignment=1, textColor=colors.HexColor('#666666')))
-    
-    # Novo estilo para os valores dentro das caixas de Preferências
     styles.add(ParagraphStyle(name='PrefValue', fontSize=12, fontName='Helvetica-Bold', textColor=colors.HexColor('#333333'), alignment=0, spaceBefore=3)) 
     
-    # 🎯 NOVO Estilo para o Resumo
     styles.add(ParagraphStyle(name='ResumoStyle',
         fontName='Helvetica',
-        fontSize=11, # Aumentado de 10 para 11
+        fontSize=11, 
         textColor=colors.black,
-        alignment=1, # Centralizado
+        alignment=1, 
         spaceBefore=5,
         spaceAfter=5
     ))
@@ -233,33 +225,28 @@ def criar_pdf_perfeito():
     ]))
     story.append(t_dados)
     
-    # 🎯 AJUSTE 1: Diminuindo espaçamento após a tabela de dados
     story.append(Spacer(1, 5*mm)) 
 
     # Linha divisória
     story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=5, spaceAfter=10))
-    # 6. PREFERÊNCIAS DO INVESTIMENTO (Ajustado para o layout de 3 colunas)
+    
+    # 6. PREFERÊNCIAS DO INVESTIMENTO
     story.append(Paragraph("PREFERÊNCIAS DO INVESTIMENTO", styles['SectionTitle']))
     
-    # 6.1 Definição dos Ícones e Labels (Usando ZapfDingbats para simular os ícones)
     icone_valor = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>5</font>", styles['DataLabel'])
     icone_data = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>d</font>", styles['DataLabel'])
     icone_consideracoes = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>I</font>", styles['DataLabel'])
     
-    # Conteúdo da Tabela de Preferências
     prefs_data = [
-        # Linha 1: Ícone + Rótulo (Valor aplicado | Data do Vencimento | Considerações)
         [icone_valor, Paragraph("Valor aplicado", styles['DataLabel']), 
          icone_data, Paragraph("Data do Vencimento", styles['DataLabel']), 
          icone_consideracoes, Paragraph("Considerações", styles['DataLabel'])],
         
-        # Linha 2: Valores
         [Spacer(1,1), Paragraph(brl_pdf(valor_investido), styles['PrefValue']), 
          Spacer(1,1), Paragraph(data_vencimento.strftime('%d/%m/%Y'), styles['PrefValue']), 
          Spacer(1,1), Paragraph("IR, IOF", styles['PrefValue'])]
     ]
     
-    # ColWidths: 6 colunas, distribuídas em 3 grupos de (Ícone Pequeno + Conteúdo Maior)
     largura_pref = total_width / 3
     colWidths_prefs = [8*mm, largura_pref - 8*mm, 8*mm, largura_pref - 8*mm, 8*mm, largura_pref - 8*mm]
     
@@ -267,17 +254,15 @@ def criar_pdf_perfeito():
     t_prefs.hAlign = 'LEFT'
     
     t_prefs.setStyle(TableStyle([
-        ('GRID', (0,0), (1,1), 0.5, colors.lightgrey), # Caixa 1
-        ('GRID', (2,0), (3,1), 0.5, colors.lightgrey), # Caixa 2
-        ('GRID', (4,0), (5,1), 0.5, colors.lightgrey), # Caixa 3
+        ('GRID', (0,0), (1,1), 0.5, colors.lightgrey), 
+        ('GRID', (2,0), (3,1), 0.5, colors.lightgrey), 
+        ('GRID', (4,0), (5,1), 0.5, colors.lightgrey), 
         ('ALIGN', (0,0), (-1,-1), 'LEFT'),
         ('VALIGN', (0,0), (-1,-1), 'TOP'),
         ('LEFTPADDING', (0,0), (-1,-1), 5),
         ('RIGHTPADDING', (0,0), (-1,-1), 2),
         ('TOPPADDING', (0,0), (-1,-1), 5),
         ('BOTTOMPADDING', (0,0), (-1,-1), 5),
-        
-        # Alinhar ícones verticalmente
         ('VALIGN', (0,0), (0,1), 'TOP'),
         ('VALIGN', (2,0), (2,1), 'TOP'),
         ('VALIGN', (4,0), (4,1), 'TOP'),
@@ -285,17 +270,14 @@ def criar_pdf_perfeito():
     
     story.append(t_prefs)
     
-    # 6.2 Linha divisória para separar o bloco PREFERÊNCIAS
-    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=30, spaceAfter=30)) # Reduzido spaceAfter para 10mm
+    # Linha divisória
+    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=10)) 
 
-    ## ===================== NOVO BLOCO: RESUMO DA OPERAÇÃO (Caixa discreta SEM BORDAS) =====================
-    
-    # 🎯 AJUSTE 2: Inserindo o novo título
+    # 7. RESUMO DA OPERAÇÃO
     story.append(Paragraph("RESUMO DA OPERAÇÃO", styles['SectionTitle'])) 
     
     VERDE_RENTABILIDADE_STR = '#2E8B57' 
     
-    # 1. Montando a frase de resumo (removendo ** dos valores iniciais)
     meses = prazo_meses 
     if tipo_cdb == "Pré-fixado":
         taxa_label = f"{taxa_anual:.2f}% a.a."
@@ -305,44 +287,30 @@ def criar_pdf_perfeito():
         except NameError:
             taxa_label = f"Taxa de mercado ({taxa_anual:.2f}% a.a.)"
             
-    # O valor final continua com negrito e verde
     valor_liquido_formatado = f"<b><font color='{VERDE_RENTABILIDADE_STR}'>{brl_pdf(montante_liquido)}</font></b>" 
     
-    # 🎯 AJUSTE 4: Removendo ** (negrito) dos valores iniciais (valor, taxa, meses)
+    # Texto do resumo sem negrito inicial
     resumo_texto = f"Com um investimento inicial de {brl_pdf(valor_investido)} em um CDB com taxa de {taxa_label} por um período de {meses} meses, o valor líquido será de {valor_liquido_formatado}."
 
-    # 2. Criando o Paragraph com o resumo (usando o novo ResumoStyle com fontSize=11)
     resumo_paragrafo = Paragraph(resumo_texto, styles['ResumoStyle'])
 
-    # 3. Criando a Tabela de célula única (para manter alinhamento centralizado)
     t_resumo = Table([[resumo_paragrafo]], colWidths=[total_width])
     t_resumo.hAlign = 'CENTER'
 
-    # 🎯 AJUSTE 3: Removendo GRID e ROUNDED para tirar as bordas e cantos arredondados
     t_resumo.setStyle(TableStyle([
-        # ('GRID', (0,0), (-1,-1), 0.5, CINZA_BORDA), # REMOVIDO
         ('BACKGROUND', (0,0), (-1,-1), colors.white),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('INNERPADDING', (0,0), (-1,-1), 0), # Ajustado para zero para controle total do espaçamento
+        ('INNERPADDING', (0,0), (-1,-1), 0), 
         ('LEFTPADDING', (0,0), (-1,-1), 0),
         ('RIGHTPADDING', (0,0), (-1,-1), 0),
-        # ('ROUNDED', (0,0), (-1,-1), 5), # REMOVIDO
     ]))
 
     story.append(t_resumo)
-    story.append(Spacer(1, 15*mm)) # Espaçamento antes do próximo título
-    ## =========================================================================================
-
-    # 7. PROJEÇÃO DA RENTABILIDADE (Gráfico)
-    story.append(Paragraph("PROJEÇÃO DA RENTABILIDADE", styles['SectionTitle']))
     
-    img = Image(grafico_png(), width=180*mm, height=90*mm)
-    img.hAlign = 'CENTER'
-    story.append(img)
-    story.append(Paragraph("Projeção baseada em taxas atuais, podendo variar conforme mercado", 
-                           ParagraphStyle(name='GraphNote', fontSize=9, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=20*mm)))
+    # 🎯 AJUSTE DE ESPAÇAMENTO: Pequeno espaço antes do Resultado Final
+    story.append(Spacer(1, 5*mm)) 
 
-    # 8. RESULTADO FINAL 
+    # 8. RESULTADO FINAL (MOVIDO PARA CÁ)
     resultado = [
         ["VALOR BRUTO", "IMPOSTOS", "VALOR LÍQUIDO"],
         [brl_pdf(montante_bruto), brl_pdf(ir + (rendimento_bruto - rendimento_apos_iof)), brl_pdf(montante_liquido)],
@@ -367,9 +335,20 @@ def criar_pdf_perfeito():
         ('GRID', (0,0), (-1,-1), 0, colors.transparent),
     ]))
     story.append(t_res_final)
-    story.append(Spacer(1, 20*mm))
     
-    # 9. Rodapé (Simulação elaborada...)
+    # 🎯 AJUSTE DE ESPAÇAMENTO: Espaço maior antes do gráfico
+    story.append(Spacer(1, 15*mm)) 
+    
+    # 9. PROJEÇÃO DA RENTABILIDADE (Gráfico)
+    story.append(Paragraph("PROJEÇÃO DA RENTABILIDADE", styles['SectionTitle']))
+    
+    img = Image(grafico_png(), width=180*mm, height=90*mm)
+    img.hAlign = 'CENTER'
+    story.append(img)
+    story.append(Paragraph("Projeção baseada em taxas atuais, podendo variar conforme mercado", 
+                           ParagraphStyle(name='GraphNote', fontSize=9, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=20*mm)))
+
+    # 10. Rodapé 
     story.append(Paragraph(f"Simulação elaborada por <b>{nome_assessor}</b> em {data_simulacao.strftime('%d/%m/%Y')}", styles['Footer']))
 
 
