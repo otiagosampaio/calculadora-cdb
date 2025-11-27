@@ -9,7 +9,7 @@ st.set_page_config(page_title="Traders Corretora - Calculadora CDB", layout="cen
 col_logo, col_titulo = st.columns([1, 5])
 with col_logo:
     # Seu logo oficial direto do Google Drive (link corrigido para download direto)
-    st.image("https://drive.google.com/uc?id=17-EZVI0UbdmeUH6siyHqLQLA--6EsWeX", width=120)
+    st.image("https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png", width=120)
 with col_titulo:
     st.markdown("<h1 style='margin-top: 25px; color: #6B48FF; font-weight: 800;'>traders</h1>", unsafe_allow_html=True)
     st.markdown("<h2 style='color: #222; margin-top: -10px;'>Calculadora de CDB Pré e Pós-fixado</h2>", unsafe_allow_html=True)
