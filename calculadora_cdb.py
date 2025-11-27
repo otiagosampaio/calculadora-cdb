@@ -16,32 +16,36 @@ with st.sidebar:
     data_aplicacao = st.date_input("Data da aplicação", value=datetime.date.today())
     data_vencimento = st.date_input("Data do resgate", value=data_aplicacao + relativedelta(months=+12))
     
+    # Ajuste para prazo em dias: usa 30 dias por mês para convenção financeira
+    prazo_meses = (data_vencimento.year - data_aplicacao.year) * 12 + (data_vencimento.month - data_aplicacao.month)
+    if data_vencimento.day < data_aplicacao.day:
+        prazo_meses -= 1  # Ajuste se dia de vencimento for anterior
+    prazo_dias = prazo_meses * 30  # Convenção: 30 dias/mês = 360 dias/ano
+    
     tipo_cdb = st.radio("Tipo de CDB", ["Pós-fixado (% do CDI)", "Pré-fixado"])
     
     if tipo_cdb == "Pós-fixado (% do CDI)":
         taxa_cdi = st.number_input("Taxa CDI anual (ex: 13.65 para 13,65%)", min_value=0.01, value=13.65)
         perc_cdi = st.number_input("Percentual do CDI (ex: 100% = digite 100)", min_value=1.0, value=110.0, step=1.0)
         taxa_anual = taxa_cdi * (perc_cdi / 100)
+        dias_ano = 252  # Dias úteis para pós-fixado
         st.info(f"Taxa efetiva: {taxa_anual:.2f}% a.a.")
     else:
         taxa_anual = st.number_input("Taxa pré-fixada anual (%)", min_value=0.01, value=14.50)
+        dias_ano = 360  # Convenção para pré-fixado
     
     considerar_iof = st.checkbox("Considerar IOF (resgate < 30 dias)", value=False)
-
-# Cálculo do prazo em dias e anos
-prazo_dias = (data_vencimento - data_aplicacao).days
-prazo_anos = prazo_dias / 365.0
 
 if prazo_dias <= 0:
     st.error("A data de resgate deve ser posterior à data de aplicação.")
 else:
-    # Taxa diária (252 dias úteis no ano para CDI/pré)
-    taxa_diaria = (1 + taxa_anual / 100) ** (1/252) - 1
+    # Taxa diária corrigida pela convenção
+    taxa_diaria = (1 + taxa_anual / 100) ** (1/dias_ano) - 1
     montante_bruto = investimento * (1 + taxa_diaria) ** prazo_dias
     
     rendimento_bruto = montante_bruto - investimento
 
-    # IOF (só nos primeiros 30 dias)
+    # IOF (só nos primeiros 30 dias) - não altera aqui
     iof = 0.0
     if considerar_iof and prazo_dias < 30:
         tabela_iof = [0.96, 0.93, 0.90, 0.86, 0.83, 0.80, 0.76, 0.73, 0.70, 0.66,
@@ -82,7 +86,7 @@ else:
 
     col_a, col_b = st.columns(2)
     with col_a:
-        st.write(f"**Prazo do investimento:** {prazo_dias} dias ({prazo_anos:.2f} anos)")
+        st.write(f"**Prazo do investimento:** {prazo_dias} dias ({prazo_dias/360:.2f} anos)")
         st.write(f"**Taxa contratada:** {taxa_anual:.2f}% a.a.")
         if tipo_cdb == "Pós-fixado (% do CDI)":
             st.write(f"→ {perc_cdi}% do CDI ({taxa_cdi}% a.a.)")
