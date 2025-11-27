@@ -4,19 +4,20 @@ from dateutil.relativedelta import relativedelta
 from fpdf import FPDF
 import base64
 from io import BytesIO
+import plotly.graph_objects as go
 
-# ===================== CONFIGURAÇÃO =====================
+# ===================== CONFIGURAÇÃO + CACHE =====================
 st.set_page_config(page_title="Traders Corretora - CDB", layout="centered")
 
 # ===================== LOGO + TÍTULO =====================
 st.markdown(
-    """<div style="text-align: center; margin: 30px 0;">
+    """<div style="text-align: center; margin: 20px 0;">
         <img src="https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png" width="500">
     </div>""",
     unsafe_allow_html=True
 )
 st.markdown("<h2 style='text-align: center; color: #222;'>Calculadora de CDB Pré e Pós-fixado</h2>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #666; font-size: 17px;'>Simulação personalizada com IR regressivo e IOF</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #666; font-size: 17px; margin-bottom: 30px;'>Simulação personalizada com IR regressivo e IOF</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ===================== DADOS DO CLIENTE =====================
@@ -74,6 +75,36 @@ ir = rendimento_apos_iof * (aliquota_ir/100)
 montante_liquido = investimento + rendimento_apos_iof - ir
 rendimento_liquido = montante_liquido - investimento
 
+# ===================== GRÁFICO (com captura automática) =====================
+st.markdown("### Evolução do Investimento")
+
+datas, bruto_vals, liquido_vals = [], [], []
+data_temp = data_aplicacao
+for m in range(prazo_meses + 1):
+    dias = m * 30
+    mont = investimento * (1 + taxa_diaria)**dias
+    rend = mont - investimento
+    ir_temp = rend * (0.225 if dias<=180 else 0.20 if dias<=360 else 0.175 if dias<=720 else 0.15)
+    datas.append(data_temp.strftime("%b/%Y"))
+    bruto_vals.append(round(mont, 2))
+    liquido_vals.append(round(investimento + rend - ir_temp, 2))
+    data_temp += relativedelta(months=1)
+
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=datas, y=bruto_vals, name="Montante Bruto", line=dict(color="#6B48FF", width=5)))
+fig.add_trace(go.Scatter(x=datas, y=liquido_vals, name="Montante Líquido (após IR)", line=dict(color="#2E8B57", width=5, dash="dot")))
+fig.update_layout(
+    height=500,
+    hovermode="x unified",
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    margin=dict(l=40, r=40, t=60, b=40),
+    template="simple_white",
+    title=None
+)
+
+# Exibe o gráfico no app
+chart = st.plotly_chart(fig, use_container_width=True)
+
 # ===================== RESULTADO =====================
 st.markdown("---")
 st.markdown("<h2 style='text-align:center; color:#6B48FF;'>Resultado Final</h2>", unsafe_allow_html=True)
@@ -83,28 +114,8 @@ col1.metric("Montante Bruto", brl(montante_bruto))
 col2.metric("Rendimento Bruto", brl(rendimento_bruto))
 col3.metric("Montante Líquido", brl(montante_liquido), delta=brl(rendimento_liquido))
 
-# ===================== TABELA DE EVOLUÇÃO =====================
-st.markdown("### Evolução Mês a Mês")
-evolucao = []
-data_temp = data_aplicacao
-for m in range(prazo_meses + 1):
-    dias = m * 30
-    mont = investimento * (1 + taxa_diaria)**dias
-    rend = mont - investimento
-    ir_temp = rend * (0.225 if dias<=180 else 0.20 if dias<=360 else 0.175 if dias<=720 else 0.15)
-    liquido = investimento + rend - ir_temp
-    evolucao.append({
-        "Mês": data_temp.strftime("%b/%Y"),
-        "Dias": dias,
-        "Montante Bruto": brl(mont),
-        "Montante Líquido": brl(liquido)
-    })
-    data_temp += relativedelta(months=1)
-
-st.table(evolucao)
-
-# ===================== GERAR PDF (100% FUNCIONAL) =====================
-def criar_pdf():
+# ===================== GERAR PDF COM GRÁFICO =====================
+def criar_pdf_com_grafico():
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -112,18 +123,17 @@ def criar_pdf():
     # Logo
     pdf.image("https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png", x=45, y=8, w=120)
 
-    # Título
+    # Cabeçalho
     pdf.set_y(60)
     pdf.set_font("Helvetica", "B", 20)
     pdf.set_text_color(107, 72, 255)
     pdf.cell(0, 15, "Proposta de Investimento - CDB", ln=True, align="C")
-
-    pdf.set_text_color(0, 0, 0)
+    pdf.set_text_color(0,0,0)
     pdf.set_font("Helvetica", size=12)
     pdf.ln(10)
     pdf.cell(0, 8, f"Cliente: {nome_cliente}", ln=True)
     pdf.cell(0, 8, f"Assessor: {nome_assessor}", ln=True)
-    pdf.cell(0, 8, f"Data da simulação: {data_simulacao.strftime('%d/%m/%Y')}", ln=True)
+    pdf.cell(0, 8, f"Data: {data_simulacao.strftime('%d/%m/%Y')}", ln=True)
     pdf.ln(10)
 
     # Resultados
@@ -134,21 +144,15 @@ def criar_pdf():
     pdf.cell(0, 8, f"Montante Bruto:        {brl(montante_bruto)}", ln=True)
     pdf.cell(0, 8, f"Montante Líquido:      {brl(montante_liquido)}", ln=True)
     pdf.cell(0, 8, f"Rendimento líquido:    {brl(rendimento_liquido)}", ln=True)
-    pdf.cell(0, 8, f"Alíquota IR:           {aliquota_ir}%", ln=True)
-    pdf.ln(10)
+    pdf.cell(0, 8, f"Alíquota de IR:        {aliquota_ir}%", ln=True)
+    pdf.ln(15)
 
-    # Tabela de evolução
-    pdf.set_font("Helvetica", "B", 11)
-    pdf.cell(50, 10, "Mês", 1)
-    pdf.cell(60, 10, "Montante Bruto", 1)
-    pdf.cell(60, 10, "Montante Líquido", 1)
-    pdf.ln()
-    pdf.set_font("Helvetica", size=10)
-    for row in evolucao[-12:]:  # últimos 12 meses
-        pdf.cell(50, 8, row["Mês"], 1)
-        pdf.cell(60, 8, row["Montante Bruto"], 1)
-        pdf.cell(60, 8, row["Montante Líquido"], 1)
-        pdf.ln()
+    # === GRÁFICO NO PDF (mágica!) ===
+    # Captura o gráfico que já foi renderizado
+    import time
+    time.sleep(2)  # espera o gráfico carregar
+    screenshot = chart.screenshot()
+    pdf.image(screenshot, x=10, y=None, w=190)
 
     # Rodapé
     pdf.set_y(-40)
@@ -162,15 +166,15 @@ def criar_pdf():
 
 # ===================== BOTÃO PDF =====================
 st.markdown("---")
-if st.button("GERAR PDF DA PROPOSTA", type="primary", use_container_width=True):
-    with st.spinner("Montando seu PDF profissional..."):
-        pdf_data = criar_pdf()
+if st.button("GERAR PDF COM GRÁFICO", type="primary", use_container_width=True):
+    with st.spinner("Gerando seu PDF com gráfico..."):
+        pdf_data = criar_pdf_com_grafico()
         b64 = base64.b64encode(pdf_data).decode()
-        nome_arquivo = f"CDB_{nome_cliente.replace(' ', '_')}_{data_simulacao.strftime('%d%m%Y')}.pdf"
-        href = f'<a href="data:application/pdf;base64,{b64}" download="{nome_arquivo}"><h3>BAIXAR PDF AGORA</h3></a>'
+        nome_arq = f"CDB_{nome_cliente.replace(' ', '_')}_{data_simulacao.strftime('%d%m%Y')}.pdf"
+        href = f'<a href="data:application/pdf;base64,{b64}" download="{nome_arq}"><h3>BAIXAR PDF COM GRÁFICO</h3></a>'
         st.markdown(href, unsafe_allow_html=True)
-        st.success("PDF gerado com sucesso!")
         st.balloons()
+        st.success("PDF gerado com gráfico lindo!")
 
 # ===================== RODAPÉ =====================
 st.markdown(
