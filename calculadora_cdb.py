@@ -23,7 +23,7 @@ def carregar_logo():
     proporcao = altura / largura
     largura_desejada = 200 
     altura_calculada = largura_desejada * proporcao
-    return Image(PIOBytesIO(response.content), width=largura_desejada, height=altura_calculada)
+    return Image(PIOBytesO(response.content), width=largura_desejada, height=altura_calculada)
 
 # ===================== CONFIGURAÇÃO =====================
 st.set_page_config(page_title="Traders Corretora - CDB", layout="centered")
@@ -54,6 +54,9 @@ with c2:
 st.markdown("---")
 
 # ===================== PARÂMETROS =====================
+# >>> CORREÇÃO DO ERRO: Inicializar taxa_cdi para que esteja definida para os cálculos de benchmark.
+taxa_cdi = 13.65 
+
 with st.expander("Preferências do Investimento", expanded=True):
     col1, col2 = st.columns(2)
     with col1:
@@ -63,6 +66,7 @@ with st.expander("Preferências do Investimento", expanded=True):
 
     if tipo_cdb == "Pós-fixado (% do CDI)":
         col_cdi1, col_cdi2 = st.columns(2)
+        # O usuário pode editar taxa_cdi aqui
         with col_cdi1: taxa_cdi = st.number_input("Taxa CDI anual (%)", value=13.65, step=0.05)
         with col_cdi2: perc_cdi = st.number_input("Percentual do CDI (%)", value=110.0, step=1.0)
         taxa_anual = taxa_cdi * (perc_cdi / 100)
@@ -94,6 +98,7 @@ rendimento_liquido = montante_liquido - valor_investido
 
 # ===================== CÁLCULOS BENCHMARKS =====================
 # Definindo taxas anuais (usando 365 dias para benchmarks de calendário)
+# Agora 'taxa_cdi' sempre existirá.
 taxa_cdi_anual = taxa_cdi / 100 # Taxa CDI informada
 taxa_poupanca_anual = 0.0617 # Proxy: 0.5% a.m. (6.17% a.a.)
 taxa_ibov_anual = 0.10 # Proxy: 10% a.a.
