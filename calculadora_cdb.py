@@ -10,6 +10,20 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import mm
+import requests
+from PIL import Image as PILImage
+from io import BytesIO as PIOBytesIO
+
+# ===================== FUNÇÃO PARA CARREGAR LOGO COM PROPORÇÃO CORRETA =====================
+def carregar_logo_com_proporcao():
+    url = "https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png"
+    response = requests.get(url)
+    img = PILImage.open(PIOBytesIO(response.content))
+    largura, altura = img.size
+    proporcao = altura / largura
+    largura_desejada = 160  # em pontos (1 inch = 72 pontos)
+    altura_calculada = largura_desejada * proporcao
+    return Image(PIOBytesIO(response.content), width=largura_desejada, height=altura_calculada)
 
 # ===================== CONFIGURAÇÃO =====================
 st.set_page_config(page_title="Traders Corretora - CDB", layout="centered")
@@ -44,7 +58,7 @@ with st.expander("Preferências do Investimento", expanded=True):
         data_aplicacao = st.date_input("Data da aplicação", datetime.date.today(), format="DD/MM/YYYY")
     with col2:
         data_vencimento = st.date_input("Data do resgate", data_aplicacao + relativedelta(months=+12), format="DD/MM/YYYY")
-        considerar_iof = st.checkbox("Considerações", value=True, help="IR e IOF")
+        considerar_iof = st.checkbox("Considerações", value=True)
 
     tipo_cdb = st.radio("Tipo de CDB", ["Pré-fixado", "Pós-fixado (% do CDI)"], horizontal=True)
 
@@ -95,7 +109,7 @@ for m in range(prazo_meses + 1):
 
 fig, ax = plt.subplots(figsize=(12, 6))
 ax.plot(datas_graf, bruto_graf, label="CDB Pré + IR (líquido)", color="#6B48FF", linewidth=4)
-ax.plot(datas_graf, liquido_graf, label="CDB Pré + IR (líquido)", color="#2E8B57", linewidth=4, linestyle="--", alpha=0.8)
+ax.plot(datas_graf, liquido_graf, label="CDB Pré + IR (líquido)", color="#2E8B57", linewidth=4, linestyle="--")
 ax.set_title("Projeção da Rentabilidade", fontsize=16, pad=20)
 ax.set_ylabel("Valor em R$")
 ax.legend(fontsize=12)
@@ -108,7 +122,6 @@ st.pyplot(fig)
 # ===================== RESULTADO FINAL =====================
 st.markdown("---")
 st.markdown("<h2 style='text-align:center; color:#1e3a8a;'>Resultado Final</h2>", unsafe_allow_html=True)
-
 col1, col2, col3 = st.columns(3)
 brl = lambda v: f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 col1.metric("Valor Bruto", brl(montante_bruto))
@@ -118,37 +131,35 @@ col3.metric("Valor Líquido", brl(montante_liquido), delta=brl(rendimento_liquid
 # ===================== GERAR PNG DO GRÁFICO =====================
 def grafico_png():
     buf = BytesIO()
-    plt.savefig(buf, format='png', dpi=300, bbox_inches='tight', facecolor='#f8fafc')
+    plt.savefig(buf, format='png', dpi=300, bbox_inches='tight', facecolor='#ffffff')
     buf.seek(0)
     return buf
 
-# ===================== PDF EXATAMENTE COMO A IMAGEM =====================
-def criar_pdf_igual_imagem():
+# ===================== PDF COM LOGO NA PROPORÇÃO CORRETA =====================
+def criar_pdf_correto():
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=20*mm, bottomMargin=20*mm, leftMargin=15*mm, rightMargin=15*mm)
-    styles = getSampleStyleSheet()
-
     story = []
 
-    # Logo
-    logo = Image("https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png", width=140*mm, height=30*mm)
+    # Logo com proporção correta
+    logo = carregar_logo_com_proporcao()
     logo.hAlign = 'CENTER'
     story.append(logo)
-    story.append(Spacer(1, 10*mm))
+    story.append(Spacer(1, 15*mm))
 
     # Título
     story.append(Paragraph("Simulação de Investimento - CDB Pré e Pós-fixado", ParagraphStyle(name='Title', fontSize=18, alignment=1, spaceAfter=10*mm)))
     story.append(Paragraph("Projeção personalizada considerando IR e IOF", ParagraphStyle(name='Sub', fontSize=12, alignment=1, textColor=colors.grey, spaceAfter=20*mm)))
 
     # Dados da simulação
-    story.append(Paragraph("<b>DADOS DA SIMULAÇÃO</b>", styles['Heading3']))
-    data_simulacao_table = [
+    story.append(Paragraph("<b>DADOS DA SIMULAÇÃO</b>", ParagraphStyle(name='H3', fontSize=14, spaceAfter=8*mm)))
+    data_table = [
         ["Nome do cliente", nome_cliente],
         ["Data da simulação", data_simulacao.strftime('%d/%m/%Y')],
         ["Valor investido", brl(investimento)],
         ["Tipo de CDB", tipo_cdb],
     ]
-    t = Table(data_simulacao_table, colWidths=[80*mm, 80*mm])
+    t = Table(data_table, colWidths=[80*mm, 80*mm])
     t.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#f1f5f9")),
         ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
@@ -157,16 +168,15 @@ def criar_pdf_igual_imagem():
         ('BOTTOMPADDING', (0,0), (-1,-1), 8),
     ]))
     story.append(t)
-    story.append(Spacer(1, 15*mm))
+    story.append(Spacer(1, 20*mm))
 
     # Gráfico
     img = Image(grafico_png(), width=170*mm, height=80*mm)
     img.hAlign = 'CENTER'
     story.append(img)
-    story.append(Spacer(1, 10*mm))
+    story.append(Spacer(1, 20*mm))
 
-    # Resultado Final (caixa azul escura)
-    story.append(Spacer(1, 15*mm))
+    # Resultado Final
     resultado = [
         ["VALOR BRUTO", "IMPOSTOS", "VALOR LÍQUIDO"],
         [brl(montante_bruto), brl(ir + (rendimento_bruto - rendimento_apos_iof)), brl(montante_liquido)],
@@ -199,7 +209,7 @@ def criar_pdf_igual_imagem():
 st.markdown("---")
 if st.button("BAIXAR PROPOSTA PREMIUM", type="primary", use_container_width=True):
     with st.spinner("Gerando proposta premium..."):
-        pdf_data = criar_pdf_igual_imagem()
+        pdf_data = criar_pdf_correto()
         b64 = base64.b64encode(pdf_data).decode()
         nome_arq = f"Proposta_CDB_{nome_cliente.replace(' ', '_')}.pdf"
         href = f'<a href="data:application/pdf;base64,{b64}" download="{nome_arq}"><h3>BAIXAR PROPOSTA PREMIUM</h3></a>'
