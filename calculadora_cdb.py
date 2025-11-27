@@ -21,7 +21,7 @@ def carregar_logo():
     img = PILImage.open(PIOBytesIO(response.content))
     largura, altura = img.size
     proporcao = altura / largura
-    largura_desejada = 200  # 🎯 AJUSTE 1: Largura da logo dobrada (de 100 para 200)
+    largura_desejada = 200 # 🎯 AJUSTE 1: Largura da logo dobrada (de 100 para 200)
     altura_calculada = largura_desejada * proporcao
     return Image(PIOBytesIO(response.content), width=largura_desejada, height=altura_calculada)
 
@@ -158,7 +158,7 @@ def criar_pdf_perfeito():
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=15*mm, bottomMargin=15*mm, leftMargin=15*mm, rightMargin=15*mm)
     story = []
     
-   # 2. Estilos Personalizados (COM ESPAÇAMENTO AUMENTADO)
+    # 2. Estilos Personalizados (COM ESPAÇAMENTO AUMENTADO)
     styles = getSampleStyleSheet()
     AZUL_MARINHO_FUNDO = colors.HexColor("#0f172a") 
     
@@ -225,7 +225,6 @@ def criar_pdf_perfeito():
     story.append(Spacer(1, 15*mm))
 
     # Linha divisória
-
     story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=5, spaceAfter=10))
     # 6. PREFERÊNCIAS DO INVESTIMENTO (Ajustado para o layout de 3 colunas)
     story.append(Paragraph("PREFERÊNCIAS DO INVESTIMENTO", styles['SectionTitle']))
@@ -275,8 +274,55 @@ def criar_pdf_perfeito():
     story.append(t_prefs)
     
     # 6.2 Linha divisória para separar o bloco PREFERÊNCIAS
-    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=20))
+    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=15)) # Reduzido spaceAfter para 15mm para o resumo caber
 
+    # ===================== NOVO BLOCO: RESUMO DE CONTEÚDO (CAIXA DISCRETA) =====================
+    VERDE_RENTABILIDADE = colors.HexColor('#2E8B57') 
+    CINZA_BORDA = colors.HexColor('#CCCCCC')
+
+    # 1. Montando a frase de resumo (usando a taxa correta baseada no tipo de CDB)
+    meses = prazo_meses # Variável calculada no início do script
+    if tipo_cdb == "Pré-fixado":
+        taxa_label = f"{taxa_anual:.2f}% a.a."
+    else: # Pós-fixado
+        # Taxa CDI e Perc CDI são variáveis locais do Streamlit, mas acessíveis globalmente após o cálculo
+        try:
+            # Tenta usar perc_cdi, se falhar, usa uma string placeholder
+            taxa_label = f"{perc_cdi:.2f}% do CDI"
+        except NameError:
+            taxa_label = f"Taxa de mercado ({taxa_anual:.2f}% a.a.)" # Fallback
+            
+    valor_liquido_formatado = f"<b><font color='{VERDE_RENTABILIDADE.name}'>{brl_pdf(montante_liquido)}</font></b>"
+    
+    resumo_texto = f"Com um investimento inicial de **{brl_pdf(valor_investido)}** em um CDB com taxa de **{taxa_label}** por um período de **{meses} meses**, o valor líquido será de {valor_liquido_formatado}."
+
+    # 2. Criando o Paragraph com o resumo
+    resumo_paragrafo = Paragraph(resumo_texto, ParagraphStyle(
+        name='ResumoStyle',
+        fontName='Helvetica',
+        fontSize=10,
+        textColor=colors.black,
+        alignment=1, # Centralizado
+        spaceBefore=5,
+        spaceAfter=5
+    ))
+
+    # 3. Criando a Tabela de célula única para a caixa
+    t_resumo = Table([[resumo_paragrafo]], colWidths=[total_width])
+    t_resumo.hAlign = 'CENTER'
+
+    t_resumo.setStyle(TableStyle([
+        ('GRID', (0,0), (-1,-1), 0.5, CINZA_BORDA), # Borda super fina e cinza claro
+        ('BACKGROUND', (0,0), (-1,-1), colors.white),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('INNERPADDING', (0,0), (-1,-1), 10),
+        ('LEFTPADDING', (0,0), (-1,-1), 10),
+        ('RIGHTPADDING', (0,0), (-1,-1), 10),
+        ('ROUNDED', (0,0), (-1,-1), 5), # Bordas arredondadas (raio de 5)
+    ]))
+
+    story.append(t_resumo)
+    story.append(Spacer(1, 10*mm)) # Espaçamento antes do próximo título
 
     # 7. PROJEÇÃO DA RENTABILIDADE (Gráfico)
     story.append(Paragraph("PROJEÇÃO DA RENTABILIDADE", styles['SectionTitle']))
