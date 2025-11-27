@@ -286,7 +286,7 @@ def criar_pdf_perfeito():
     story.append(t_prefs)
     
     # 6.2 Linha divisória para separar o bloco PREFERÊNCIAS
-    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=10)) # Reduzido spaceAfter para 10mm
+    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=30, spaceAfter=30)) # Reduzido spaceAfter para 10mm
 
     ## ===================== NOVO BLOCO: RESUMO DA OPERAÇÃO (Caixa discreta SEM BORDAS) =====================
     
