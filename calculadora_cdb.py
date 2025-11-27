@@ -178,6 +178,15 @@ def criar_pdf_perfeito():
         spaceBefore=5,
         spaceAfter=5
     ))
+    # Novo estilo para o bloco de fundamentos (justificado)
+    styles.add(ParagraphStyle(name='FundamentosStyle', 
+        fontName='Helvetica',
+        fontSize=9, 
+        textColor=colors.HexColor('#444444'),
+        alignment=4, # Justificado
+        spaceBefore=5,
+        spaceAfter=5
+    ))
     
     brl_pdf = lambda v: f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     
@@ -289,7 +298,6 @@ def criar_pdf_perfeito():
             
     valor_liquido_formatado = f"<b><font color='{VERDE_RENTABILIDADE_STR}'>{brl_pdf(montante_liquido)}</font></b>" 
     
-    # Texto do resumo sem negrito inicial
     resumo_texto = f"Com um investimento inicial de {brl_pdf(valor_investido)} em um CDB com taxa de {taxa_label} por um período de {meses} meses, o valor líquido será de {valor_liquido_formatado}."
 
     resumo_paragrafo = Paragraph(resumo_texto, styles['ResumoStyle'])
@@ -307,10 +315,9 @@ def criar_pdf_perfeito():
 
     story.append(t_resumo)
     
-    # 🎯 AJUSTE DE ESPAÇAMENTO: Pequeno espaço antes do Resultado Final
     story.append(Spacer(1, 5*mm)) 
 
-    # 8. RESULTADO FINAL (MOVIDO PARA CÁ)
+    # 8. RESULTADO FINAL 
     resultado = [
         ["VALOR BRUTO", "IMPOSTOS", "VALOR LÍQUIDO"],
         [brl_pdf(montante_bruto), brl_pdf(ir + (rendimento_bruto - rendimento_apos_iof)), brl_pdf(montante_liquido)],
@@ -336,10 +343,27 @@ def criar_pdf_perfeito():
     ]))
     story.append(t_res_final)
     
-    # 🎯 AJUSTE DE ESPAÇAMENTO: Espaço maior antes do gráfico
-    story.append(Spacer(1, 15*mm)) 
+    # Linha divisória após o Resultado Final
+    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=10)) 
+
+    # 9. FUNDAMENTOS DO CDB (NOVO BLOCO - ANTES DO GRÁFICO)
+    story.append(Paragraph("FUNDAMENTOS DO CDB", styles['SectionTitle'])) 
     
-    # 9. PROJEÇÃO DA RENTABILIDADE (Gráfico)
+    # Conteúdo de fundamentos extremamente enxuto
+    fundamentos_texto = (
+        "O **CDB** é um título de renda fixa emitido por bancos. É uma escolha segura por contar com a "
+        "garantia do **FGC** (Fundo Garantidor de Créditos), que cobre até R$ 250.000 por CPF/instituição. "
+        "A **Rentabilidade** pode ser Pré-fixada ou Pós-fixada (atrelada ao CDI). "
+        "A **Liquidez** pode ser diária (reserva de emergência) ou no vencimento (maior retorno). "
+        "O **IR** é regressivo (menor imposto em prazos maiores), e o **IOF** é isento após 30 dias."
+    )
+    
+    story.append(Paragraph(fundamentos_texto, styles['FundamentosStyle']))
+    
+    # Espaçamento antes do gráfico
+    story.append(Spacer(1, 10*mm)) 
+    
+    # 10. PROJEÇÃO DA RENTABILIDADE (Gráfico)
     story.append(Paragraph("PROJEÇÃO DA RENTABILIDADE", styles['SectionTitle']))
     
     img = Image(grafico_png(), width=180*mm, height=90*mm)
@@ -348,7 +372,7 @@ def criar_pdf_perfeito():
     story.append(Paragraph("Projeção baseada em taxas atuais, podendo variar conforme mercado", 
                            ParagraphStyle(name='GraphNote', fontSize=9, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=20*mm)))
 
-    # 10. Rodapé 
+    # 11. Rodapé 
     story.append(Paragraph(f"Simulação elaborada por <b>{nome_assessor}</b> em {data_simulacao.strftime('%d/%m/%Y')}", styles['Footer']))
 
 
