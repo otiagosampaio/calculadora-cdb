@@ -14,7 +14,7 @@ import requests
 from PIL import Image as PILImage
 from io import BytesIO as PIOBytesIO 
 
-# Necessário para a máscara de input
+# Biblioteca que foi adicionada ao requirements.txt
 from streamlit_keyup import st_keyup
 import re
 
@@ -30,7 +30,7 @@ def carregar_logo():
     altura_calculada = largura_desejada * proporcao
     return Image(PIOBytesIO(response.content), width=largura_desejada, height=altura_calculada)
 
-# ===================== FUNÇÃO DE FORMATAÇÃO MONETÁRIA (NOVA) =====================
+# ===================== FUNÇÃO DE FORMATAÇÃO MONETÁRIA =====================
 def formatar_moeda(valor_str):
     # Remove tudo que não for número (exceto vírgula)
     valor_limpo = re.sub(r'[^\d,]', '', valor_str)
@@ -52,7 +52,10 @@ def formatar_moeda(valor_str):
     try:
         # Trata o caso de ter vírgula
         if ',' in valor_sem_pontos:
-            valor_float = float(valor_sem_pontos.replace(',', '.'))
+            # Pega apenas a parte antes da vírgula e os 2 decimais
+            inteiro, decimal = valor_sem_pontos.split(',')
+            decimal = decimal[:2] # Limita a dois dígitos decimais
+            valor_float = float(f"{inteiro}.{decimal}")
         else:
             valor_float = float(valor_sem_pontos)
 
@@ -90,6 +93,7 @@ taxa_cdi = taxa_cdi_mercado
 perc_cdi = 0.0 # Inicializa a variável de percentual do CDI
 taxa_anual = 0.0 # Inicializa a taxa do CDB
 
+# Estado inicial para a máscara
 if 'valor_input' not in st.session_state:
     st.session_state['valor_input'] = "500.000,00"
 
@@ -102,6 +106,7 @@ with c1:
     
     # Máscara de entrada para Valor Investido
     st.markdown("Valor investido")
+    # Usa st_keyup para leitura dinâmica de input
     valor_investido_str = st_keyup(
         label="", 
         value=st.session_state['valor_input'], 
@@ -123,7 +128,7 @@ with c2:
     tipo_cdb = st.selectbox("Tipo de CDB", ["Pré-fixado", "Pós-fixado (% do CDI)"])
 
 # ----------------- Taxa de Configuração Movida para DADOS DA SIMULAÇÃO -----------------
-# Verifica o tipo de CDB e exibe os inputs de taxa na coluna 2
+# Verifica o tipo de CDB e exibe os inputs de taxa
 if tipo_cdb == "Pós-fixado (% do CDI)":
     taxa_cdi = st.number_input("Taxa CDI anual (Benchmark) (%)", value=taxa_cdi_mercado, step=0.05)
     perc_cdi = st.number_input("Percentual do CDI (%)", value=125.0, step=1.0)
@@ -381,7 +386,6 @@ def criar_pdf_perfeito():
     story.append(Paragraph("PREFERÊNCIAS DO INVESTIMENTO", styles['SectionTitle']))
     
     # Ícones usados
-    icone_valor = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>5</font>", styles['DataLabel'])
     icone_data_app = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>d</font>", styles['DataLabel'])
     icone_data_venc = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>d</font>", styles['DataLabel'])
     icone_consideracoes = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>I</font>", styles['DataLabel'])
