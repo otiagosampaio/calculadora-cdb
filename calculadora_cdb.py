@@ -5,7 +5,7 @@ import base64
 from io import BytesIO
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from fpdf2 import FPDF  # <-- versão correta com suporte a Unicode
+from fpdf2 import FPDF  # Agora funciona com acentos!
 
 # ===================== CONFIGURAÇÃO =====================
 st.set_page_config(page_title="Traders Corretora - CDB", layout="centered")
