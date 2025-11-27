@@ -23,7 +23,7 @@ def carregar_logo():
     proporcao = altura / largura
     largura_desejada = 200 
     altura_calculada = largura_desejada * proporcao
-    # >>> CORREÇÃO DO ERRO: Corrigido PIOBytesO para PIOBytesIO
+    # CORRIGIDO: PIOBytesO para PIOBytesIO
     return Image(PIOBytesIO(response.content), width=largura_desejada, height=altura_calculada)
 
 # ===================== CONFIGURAÇÃO =====================
@@ -55,8 +55,10 @@ with c2:
 st.markdown("---")
 
 # ===================== PARÂMETROS =====================
-# Inicializar taxa_cdi para que esteja definida para os cálculos de benchmark.
-taxa_cdi = 13.65 
+# Definir CDI de mercado para benchmark (14.90% a.a. conforme solicitado)
+taxa_cdi_mercado = 14.90 
+taxa_cdi = taxa_cdi_mercado # Inicializa a variável usada para cálculos de benchmark
+perc_cdi = 0.0 # Inicializa a variável de percentual do CDI
 
 with st.expander("Preferências do Investimento", expanded=True):
     col1, col2 = st.columns(2)
@@ -67,14 +69,18 @@ with st.expander("Preferências do Investimento", expanded=True):
 
     if tipo_cdb == "Pós-fixado (% do CDI)":
         col_cdi1, col_cdi2 = st.columns(2)
-        # O usuário pode editar taxa_cdi aqui
-        with col_cdi1: taxa_cdi = st.number_input("Taxa CDI anual (%)", value=13.65, step=0.05)
-        with col_cdi2: perc_cdi = st.number_input("Percentual do CDI (%)", value=110.0, step=1.0)
+        # O usuário pode editar a taxa CDI (usada como benchmark e para calcular o CDB)
+        with col_cdi1: taxa_cdi = st.number_input("Taxa CDI anual (Benchmark) (%)", value=taxa_cdi_mercado, step=0.05)
+        # Novo input para o percentual do CDB
+        with col_cdi2: perc_cdi = st.number_input("Percentual do CDI (%)", value=125.0, step=1.0)
+        # O cálculo do CDB usa o CDI atual * o percentual simulado
         taxa_anual = taxa_cdi * (perc_cdi / 100)
         dias_ano = 252
     else:
+        # A taxa CDI não afeta o CDB, apenas a taxa pré-fixada
         taxa_anual = st.number_input("Taxa pré-fixada anual (%)", value=17.00, step=0.05)
         dias_ano = 360
+        perc_cdi = 0.0 # Valor não relevante para Pré-fixado
 
 # ===================== CÁLCULOS CDB =====================
 prazo_meses = (data_vencimento.year - data_aplicacao.year)*12 + (data_vencimento.month - data_aplicacao.month)
@@ -98,7 +104,7 @@ montante_liquido = valor_investido + rendimento_apos_iof - ir
 rendimento_liquido = montante_liquido - valor_investido
 
 # ===================== CÁLCULOS BENCHMARKS =====================
-# Definindo taxas anuais (usando 365 dias para benchmarks de calendário)
+# Agora 'taxa_cdi' sempre existirá e representa o benchmark do CDI
 taxa_cdi_anual = taxa_cdi / 100 # Taxa CDI informada
 taxa_poupanca_anual = 0.0617 # Proxy: 0.5% a.m. (6.17% a.a.)
 taxa_ibov_anual = 0.10 # Proxy: 10% a.a.
@@ -321,13 +327,11 @@ def criar_pdf_perfeito():
     VERDE_RENTABILIDADE_STR = '#2E8B57' 
     
     meses = prazo_meses 
+    # >>> LÓGICA ATUALIZADA: Mostrar taxa pré ou % do CDI
     if tipo_cdb == "Pré-fixado":
         taxa_label = f"{taxa_anual:.2f}% a.a."
     else: 
-        try:
-            taxa_label = f"{perc_cdi:.2f}% do CDI"
-        except NameError:
-            taxa_label = f"Taxa de mercado ({taxa_anual:.2f}% a.a.)"
+        taxa_label = f"{perc_cdi:.2f}% do CDI"
             
     valor_liquido_formatado = f"<b><font color='{VERDE_RENTABILIDADE_STR}'>{brl_pdf(montante_liquido)}</font></b>" 
     
@@ -427,6 +431,7 @@ def criar_pdf_perfeito():
     
     # Adicionando uma nota sobre os proxies de benchmarks
     nota_benchmarks = (
+        # >>> CDI atualizado no texto do benchmark
         f"Benchmarks: CDI ({taxa_cdi:.2f}% a.a.), Poupança (Proxy 6.17% a.a.) e IBOV (Proxy 10.00% a.a.). "
         "Projeção baseada em taxas atuais, podendo variar conforme mercado. Rentabilidades dos benchmarks são brutas (sem IR)."
     )
