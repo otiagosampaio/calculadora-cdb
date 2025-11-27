@@ -14,14 +14,14 @@ import requests
 from PIL import Image as PILImage
 from io import BytesIO as PIOBytesIO
 
-# ===================== FUNÇÃO PARA LOGO COM PROPORÇÃO CORRETA =====================
-def carregar_logo_com_proporcao():
+# ===================== LOGO COM PROPORÇÃO CORRETA =====================
+def carregar_logo():
     url = "https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png"
     response = requests.get(url)
     img = PILImage.open(PIOBytesIO(response.content))
     largura, altura = img.size
     proporcao = altura / largura
-    largura_desejada = 160
+    largura_desejada = 140
     altura_calculada = largura_desejada * proporcao
     return Image(PIOBytesIO(response.content), width=largura_desejada, height=altura_calculada)
 
@@ -54,11 +54,14 @@ st.markdown("---")
 
 # ===================== PARÂMETROS =====================
 with st.expander("Preferências do Investimento", expanded=True):
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         data_aplicacao = st.date_input("Data da aplicação", datetime.date.today(), format="DD/MM/YYYY")
     with col2:
         data_vencimento = st.date_input("Data do resgate", data_aplicacao + relativedelta(months=+12), format="DD/MM/YYYY")
+    with col3:
+        considerar_iof = st.checkbox("Considerações", value=True, label_visibility="collapsed")
+        st.write("IR, IOF" if considerar_iof else "Sem IOF")
 
     if tipo_cdb == "Pós-fixado (% do CDI)":
         col_cdi1, col_cdi2 = st.columns(2)
@@ -133,46 +136,83 @@ def grafico_png():
     buf.seek(0)
     return buf
 
-# ===================== PDF COM LAYOUT EXATO DO ANEXO 2 =====================
-def criar_pdf_final():
+# ===================== PDF EXATAMENTE COMO VOCÊ PEDIU =====================
+def criar_pdf_exato():
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=20*mm, bottomMargin=20*mm, leftMargin=15*mm, rightMargin=15*mm)
     story = []
 
-    # Logo com proporção correta
-    logo = carregar_logo_com_proporcao()
+    # Logo
+    logo = carregar_logo()
     logo.hAlign = 'CENTER'
     story.append(logo)
     story.append(Spacer(1, 15*mm))
 
     # Título em negrito
     story.append(Paragraph("<b>Simulação Personalizada de Investimentos</b>", ParagraphStyle(name='Title', fontSize=20, alignment=1, spaceAfter=10*mm)))
-    story.append(Paragraph("Projeção personalizada considerando IR e IOF", ParagraphStyle(name='Sub', fontSize=12, alignment=1, textColor=colors.grey, spaceAfter=20*mm)))
+    story.append(Paragraph("Projeção personalizada considerando IR e IOF", ParagraphStyle(name='Sub', fontSize=12, alignment=1, textColor=colors.grey, spaceAfter=25*mm)))
 
-    # DADOS DA SIMULAÇÃO - EXATAMENTE COMO ANEXO 2
-    dados_simulacao = [
-        ["Nome do cliente", nome_cliente, "Data da simulação", data_simulacao.strftime('%d/%m/%Y')],
-        ["Valor investido", brl(valor_investido), "Tipo de CDB", tipo_cdb],
+    # Bloco 1: Nome + Data
+    bloco1 = [
+        ["Nome do cliente", "", "Data da simulação", ""],
+        [nome_cliente, "", data_simulacao.strftime('%d/%m/%Y'), ""],
     ]
-    t_dados = Table(dados_simulacao, colWidths=[60*mm, 60*mm, 60*mm, 60*mm])
-    t_dados.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (0,-1), colors.HexColor("#f1f5f9")),
-        ('BACKGROUND', (2,0), (2,-1), colors.HexColor("#f1f5f9")),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
-        ('FONTSIZE', (0,0), (-1,-1), 11),
-        ('LEFTPADDING', (0,0), (-1,-1), 8),
-        ('RIGHTPADDING', (0,0), (-1,-1), 8),
-        ('ALIGN', (1,0), (1,-1), 'LEFT'),
-        ('ALIGN', (3,0), (3,-1), 'LEFT'),
+    t1 = Table(bloco1, colWidths=[60*mm, 10*mm, 60*mm, 50*mm])
+    t1.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 11),
+        ('FONTSIZE', (0,1), (-1,1), 13),
+        ('ALIGN', (0,1), (0,1), 'LEFT'),
+        ('ALIGN', (2,1), (2,1), 'LEFT'),
+        ('GRID', (0,0), (-1,1), 0, colors.transparent),
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,1), (-1,1), 15),
     ]))
-    story.append(t_dados)
-    story.append(Spacer(1, 20*mm))
+    story.append(t1)
+
+    # Bloco 2: Valor + Tipo CDB
+    bloco2 = [
+        ["Valor Investido", "", "Tipo de CDB", ""],
+        [brl(valor_investido), "", tipo_cdb, ""],
+    ]
+    t2 = Table(bloco2, colWidths=[60*mm, 10*mm, 60*mm, 50*mm])
+    t2.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 11),
+        ('FONTSIZE', (0,1), (-1,1), 13),
+        ('ALIGN', (0,1), (0,1), 'LEFT'),
+        ('ALIGN', (2,1), (2,1), 'LEFT'),
+        ('GRID', (0,0), (-1,1), 0, colors.transparent),
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,1), (-1,1), 20),
+    ]))
+    story.append(t2)
+
+    # Preferências do Investimento
+    story.append(Paragraph("<b>PREFERÊNCIAS DO INVESTIMENTO</b>", ParagraphStyle(name='H3', fontSize=14, spaceBefore=10*mm, spaceAfter=10*mm)))
+
+    bloco3 = [
+        ["Valor aplicado", "Vencimento", "Considerações"],
+        [brl(valor_investido), data_vencimento.strftime('%d/%m/%Y'), "IR, IOF"],
+    ]
+    t3 = Table(bloco3, colWidths=[60*mm, 60*mm, 60*mm])
+    t3.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#f1f5f9")),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 11),
+        ('FONTSIZE', (0,1), (-1,1), 13),
+        ('GRID', (0,0), (-1,-1), 1, colors.lightgrey),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('LEFTPADDING', (0,0), (-1,-1), 10),
+    ]))
+    story.append(t3)
+    story.append(Spacer(1, 25*mm))
 
     # Gráfico
     img = Image(grafico_png(), width=170*mm, height=80*mm)
     img.hAlign = 'CENTER'
     story.append(img)
-    story.append(Spacer(1, 20*mm))
+    story.append(Spacer(1, 25*mm))
 
     # Resultado Final
     resultado = [
@@ -207,7 +247,7 @@ def criar_pdf_final():
 st.markdown("---")
 if st.button("BAIXAR PROPOSTA PREMIUM", type="primary", use_container_width=True):
     with st.spinner("Gerando sua proposta premium..."):
-        pdf_data = criar_pdf_final()
+        pdf_data = criar_pdf_exato()
         b64 = base64.b64encode(pdf_data).decode()
         nome_arq = f"Proposta_CDB_{nome_cliente.replace(' ', '_')}.pdf"
         href = f'<a href="data:application/pdf;base64,{b64}" download="{nome_arq}"><h3>BAIXAR PROPOSTA PREMIUM</h3></a>'
@@ -215,11 +255,10 @@ if st.button("BAIXAR PROPOSTA PREMIUM", type="primary", use_container_width=True
         st.balloons()
         st.success("Proposta premium gerada com sucesso!")
 
-# Armazena nome do assessor para o PDF
 if 'nome_assessor' not in st.session_state:
-    st.session_state.nome_assessor = nome_assessor
+    st.session_state.nome_assessor = "Seu Nome"
 
 st.markdown(
-    f"<p style='text-align:center; color:#666; margin-top:40px;'>Simulação elaborada por <b>{nome_assessor}</b> em {data_simulacao.strftime('%d/%m/%Y')}</p>",
+    f"<p style='text-align:center; color:#666; margin-top:40px;'>Simulação elaborada por <b>{st.session_state.nome_assessor}</b> em {data_simulacao.strftime('%d/%m/%Y')}</p>",
     unsafe_allow_html=True
 )
