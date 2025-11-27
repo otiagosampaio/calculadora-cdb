@@ -5,7 +5,11 @@ import base64
 from io import BytesIO
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from fpdf2 import FPDF  # Agora funciona com acentos!
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.units import cm
 
 # ===================== CONFIGURAÇÃO =====================
 st.set_page_config(page_title="Traders Corretora - CDB", layout="centered")
@@ -112,82 +116,80 @@ col1.metric("Montante Bruto", brl(montante_bruto))
 col2.metric("Rendimento Bruto", brl(rendimento_bruto))
 col3.metric("Montante Líquido", brl(montante_liquido), delta=brl(rendimento_liquido))
 
-# ===================== PDF PREMIUM =====================
+# ===================== GERAR PNG DO GRÁFICO =====================
 def grafico_png():
     buf = BytesIO()
     plt.savefig(buf, format='png', dpi=300, bbox_inches='tight', facecolor='white')
     buf.seek(0)
     return buf
 
-class PDF(FPDF):
-    def header(self):
-        self.image("https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png", 15, 10, 50)
-        self.set_fill_color(107, 72, 255)
-        self.rect(0, 35, 210, 10, 'F')
-        self.set_font("Helvetica", "B", 26)
-        self.set_text_color(255, 255, 255)
-        self.set_y(38)
-        self.cell(0, 10, "SIMULAÇÃO DE INVESTIMENTO", ln=True, align="C")
-        self.ln(10)
+# ===================== PDF COM REPORTLAB (100% FUNCIONA!) =====================
+def criar_pdf_reportlab():
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm)
+    styles = getSampleStyleSheet()
+    story = []
 
-    def footer(self):
-        self.set_y(-25)
-        self.set_font("Helvetica", "I", 9)
-        self.set_text_color(100, 100, 100)
-        self.cell(0, 10, "Traders Corretora • Assessoria de Investimentos", align="C")
+    # Logo
+    logo = Image("https://ik.imagekit.io/aufhkvnry/logo-traders__bg-white.png", width=180, height=60)
+    logo.hAlign = 'CENTER'
+    story.append(logo)
+    story.append(Spacer(1, 20))
 
-def criar_pdf():
-    pdf = PDF()
-    pdf.add_page()
+    # Título
+    titulo = Paragraph("SIMULAÇÃO DE INVESTIMENTO", styles['Title'])
+    titulo.alignment = 1  # centro
+    story.append(titulo)
+    story.append(Spacer(1, 20))
 
-    # Cliente em destaque
-    pdf.set_font("Helvetica", "B", 22)
-    pdf.set_text_color(107, 72, 255)
-    pdf.cell(0, 15, nome_cliente.upper(), ln=True, align="C")
-    pdf.set_font("Helvetica", "", 13)
-    pdf.set_text_color(80, 80, 80)
-    pdf.cell(0, 10, f"Simulação elaborada por {nome_assessor} • {data_simulacao.strftime('%d/%m/%Y')}", ln=True, align="C")
-    pdf.ln(20)
+    # Cliente
+    cliente_style = ParagraphStyle(name='Cliente', fontSize=24, textColor=colors.HexColor("#6B48FF"), alignment=1)
+    story.append(Paragraph(nome_cliente.upper(), cliente_style))
+    story.append(Paragraph(f"Simulação elaborada por <b>{nome_assessor}</b> • {data_simulacao.strftime('%d/%m/%Y')}", styles['Normal']))
+    story.append(Spacer(1, 30))
 
-    # Resultados
-    pdf.set_fill_color(248, 245, 255)
-    pdf.set_draw_color(107, 72, 255)
-    pdf.rect(15, pdf.get_y(), 180, 80, 'FD')
-
-    pdf.set_xy(20, pdf.get_y() + 12)
-    pdf.set_font("Helvetica", "B", 15)
-    pdf.set_text_color(107, 72, 255)
-    pdf.cell(0, 10, "Resultado da Aplicação", ln=True)
-
-    pdf.set_font("Helvetica", "", 13)
-    pdf.set_text_color(50, 50, 50)
-    pdf.cell(0, 10, f"Valor Investido:           {brl(investimento)}", ln=True)
-    pdf.set_text_color(107, 72, 255)
-    pdf.cell(0, 10, f"Montante Bruto:            {brl(montante_bruto)}", ln=True)
-    pdf.set_text_color(46, 139, 87)
-    pdf.set_font("Helvetica", "B", 18)
-    pdf.cell(0, 12, f"Montante Líquido:          {brl(montante_liquido)}", ln=True)
-    pdf.set_font("Helvetica", "B", 15)
-    pdf.cell(0, 10, f"Rendimento Líquido:        +{brl(rendimento_liquido)}", ln=True)
-    pdf.set_font("Helvetica", "", 12)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 8, f"Alíquota de IR aplicada: {aliquota_ir}%", ln=True)
-    pdf.ln(20)
+    # Resultados em tabela
+    data = [
+        ["", "Valor"],
+        ["Valor Investido", brl(investimento)],
+        ["Montante Bruto", brl(montante_bruto)],
+        ["<font color='#2E8B57'><b>Montante Líquido</b></font>", f"<font color='#2E8B57'><b>{brl(montante_liquido)}</b></font>"],
+        ["Rendimento Líquido", f"<font color='#2E8B57'><b>+{brl(rendimento_liquido)}</b></font>"],
+        ["Alíquota de IR", f"{aliquota_ir}%"],
+    ]
+    tabela = Table(data, colWidths=[300, 150])
+    tabela.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#6B48FF")),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('GRID', (0,0), (-1,-1), 1, colors.HexColor("#6B48FF")),
+        ('BACKGROUND', (0,2), (-1,3), colors.HexColor("#f0fff0")),
+    ]))
+    story.append(tabela)
+    story.append(Spacer(1, 30))
 
     # Gráfico
-    png = grafico_png()
-    pdf.image(png, x=15, y=None, w=180)
+    img_data = grafico_png()
+    img = Image(img_data, width=500, height=300)
+    img.hAlign = 'CENTER'
+    story.append(img)
 
-    buffer = BytesIO()
-    pdf.output(buffer)
+    # Rodapé
+    story.append(Spacer(1, 40))
+    rodape = Paragraph("Traders Corretora • Assessoria de Investimentos<br/>Esta é uma simulação. Rentabilidade passada não é garantia de resultados futuros.", styles['Normal'])
+    rodape.alignment = 1
+    story.append(rodape)
+
+    doc.build(story)
     buffer.seek(0)
     return buffer.getvalue()
 
 # ===================== BOTÃO PDF =====================
 st.markdown("---")
-if st.button("GERAR PROPOSTA PREMIUM (PDF)", type="primary", use_container_width=True):
+if st.button("GERAR PROPOSTA (PDF)", type="primary", use_container_width=True):
     with st.spinner("Gerando sua proposta premium..."):
-        pdf_data = criar_pdf()
+        pdf_data = criar_pdf_reportlab()
         b64 = base64.b64encode(pdf_data).decode()
         nome_arq = f"Proposta_CDB_{nome_cliente.replace(' ', '_')}_{data_simulacao.strftime('%d%m%Y')}.pdf"
         href = f'<a href="data:application/pdf;base64,{b64}" download="{nome_arq}"><h3>BAIXAR PROPOSTA PREMIUM</h3></a>'
