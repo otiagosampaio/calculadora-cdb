@@ -177,6 +177,16 @@ def criar_pdf_perfeito():
     # Novo estilo para os valores dentro das caixas de Preferências
     styles.add(ParagraphStyle(name='PrefValue', fontSize=12, fontName='Helvetica-Bold', textColor=colors.HexColor('#333333'), alignment=0, spaceBefore=3)) 
     
+    # 🎯 NOVO Estilo para o Resumo
+    styles.add(ParagraphStyle(name='ResumoStyle',
+        fontName='Helvetica',
+        fontSize=11, # Aumentado de 10 para 11
+        textColor=colors.black,
+        alignment=1, # Centralizado
+        spaceBefore=5,
+        spaceAfter=5
+    ))
+    
     brl_pdf = lambda v: f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     
     # 3. Logo
@@ -222,7 +232,9 @@ def criar_pdf_perfeito():
         ('VALIGN', (0,0), (-1,-1), 'TOP'),
     ]))
     story.append(t_dados)
-    story.append(Spacer(1, 15*mm))
+    
+    # 🎯 AJUSTE 1: Diminuindo espaçamento após a tabela de dados
+    story.append(Spacer(1, 5*mm)) 
 
     # Linha divisória
     story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=5, spaceAfter=10))
@@ -274,56 +286,51 @@ def criar_pdf_perfeito():
     story.append(t_prefs)
     
     # 6.2 Linha divisória para separar o bloco PREFERÊNCIAS
-    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=15))
+    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=10)) # Reduzido spaceAfter para 10mm
 
-    ## ===================== NOVO BLOCO: RESUMO DE CONTEÚDO (CAIXA DISCRETA) =====================
-    # 🎯 CORREÇÃO: Definindo a cor como string para uso na tag <font>
+    ## ===================== NOVO BLOCO: RESUMO DA OPERAÇÃO (Caixa discreta SEM BORDAS) =====================
+    
+    # 🎯 AJUSTE 2: Inserindo o novo título
+    story.append(Paragraph("RESUMO DA OPERAÇÃO", styles['SectionTitle'])) 
+    
     VERDE_RENTABILIDADE_STR = '#2E8B57' 
-    CINZA_BORDA = colors.HexColor('#CCCCCC') 
-
-    # 1. Montando a frase de resumo (usando a taxa correta baseada no tipo de CDB)
+    
+    # 1. Montando a frase de resumo (removendo ** dos valores iniciais)
     meses = prazo_meses 
     if tipo_cdb == "Pré-fixado":
         taxa_label = f"{taxa_anual:.2f}% a.a."
-    else: # Pós-fixado
+    else: 
         try:
-            # Tenta usar perc_cdi, se falhar, usa uma string placeholder
             taxa_label = f"{perc_cdi:.2f}% do CDI"
         except NameError:
             taxa_label = f"Taxa de mercado ({taxa_anual:.2f}% a.a.)"
             
-    # Usando VERDE_RENTABILIDADE_STR
+    # O valor final continua com negrito e verde
     valor_liquido_formatado = f"<b><font color='{VERDE_RENTABILIDADE_STR}'>{brl_pdf(montante_liquido)}</font></b>" 
     
-    resumo_texto = f"Com um investimento inicial de **{brl_pdf(valor_investido)}** em um CDB com taxa de **{taxa_label}** por um período de **{meses} meses**, o valor líquido será de {valor_liquido_formatado}."
+    # 🎯 AJUSTE 4: Removendo ** (negrito) dos valores iniciais (valor, taxa, meses)
+    resumo_texto = f"Com um investimento inicial de {brl_pdf(valor_investido)} em um CDB com taxa de {taxa_label} por um período de {meses} meses, o valor líquido será de {valor_liquido_formatado}."
 
-    # 2. Criando o Paragraph com o resumo
-    resumo_paragrafo = Paragraph(resumo_texto, ParagraphStyle(
-        name='ResumoStyle',
-        fontName='Helvetica',
-        fontSize=10,
-        textColor=colors.black,
-        alignment=1, # Centralizado
-        spaceBefore=5,
-        spaceAfter=5
-    ))
+    # 2. Criando o Paragraph com o resumo (usando o novo ResumoStyle com fontSize=11)
+    resumo_paragrafo = Paragraph(resumo_texto, styles['ResumoStyle'])
 
-    # 3. Criando a Tabela de célula única para a caixa
+    # 3. Criando a Tabela de célula única (para manter alinhamento centralizado)
     t_resumo = Table([[resumo_paragrafo]], colWidths=[total_width])
     t_resumo.hAlign = 'CENTER'
 
+    # 🎯 AJUSTE 3: Removendo GRID e ROUNDED para tirar as bordas e cantos arredondados
     t_resumo.setStyle(TableStyle([
-        ('GRID', (0,0), (-1,-1), 0.5, CINZA_BORDA), # Borda super fina e cinza claro
+        # ('GRID', (0,0), (-1,-1), 0.5, CINZA_BORDA), # REMOVIDO
         ('BACKGROUND', (0,0), (-1,-1), colors.white),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('INNERPADDING', (0,0), (-1,-1), 10),
-        ('LEFTPADDING', (0,0), (-1,-1), 10),
-        ('RIGHTPADDING', (0,0), (-1,-1), 10),
-        ('ROUNDED', (0,0), (-1,-1), 5), # Bordas arredondadas (raio de 5)
+        ('INNERPADDING', (0,0), (-1,-1), 0), # Ajustado para zero para controle total do espaçamento
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+        # ('ROUNDED', (0,0), (-1,-1), 5), # REMOVIDO
     ]))
 
     story.append(t_resumo)
-    story.append(Spacer(1, 10*mm)) # Espaçamento antes do próximo título
+    story.append(Spacer(1, 15*mm)) # Espaçamento antes do próximo título
     ## =========================================================================================
 
     # 7. PROJEÇÃO DA RENTABILIDADE (Gráfico)
@@ -334,8 +341,6 @@ def criar_pdf_perfeito():
     story.append(img)
     story.append(Paragraph("Projeção baseada em taxas atuais, podendo variar conforme mercado", 
                            ParagraphStyle(name='GraphNote', fontSize=9, alignment=1, textColor=colors.HexColor('#666666'), spaceAfter=20*mm)))
-
-    # ... (Restante do bloco RESULTADO FINAL e Rodapé) ...
 
     # 8. RESULTADO FINAL 
     resultado = [
