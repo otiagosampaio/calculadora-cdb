@@ -487,27 +487,38 @@ def criar_pdf_perfeito():
     
     story.append(Spacer(1, 5*mm)) 
 
-    # 8. RESULTADO FINAL (NOVO FORMATO: 4 Colunas)
+# ... (código anterior mantido)
+
+# ===================== PDF GERAÇÃO (Tema Claro com 4 Colunas no Resultado Final) =====================
+def criar_pdf_perfeito():
+       
+    # 8. RESULTADO FINAL (NOVO FORMATO: 4 Colunas com Ajustes de Fonte/Espaçamento)
     
-    rentabilidade_bruta = rendimento_bruto
-    rentabilidade_liquida = rendimento_liquido
+    # NOVOS DADOS (Incluindo o Principal, conforme solicitado)
+    valor_final_bruto = montante_bruto  # Valor Bruto = Principal + Rentabilidade Bruta
+    valor_final_liquido = montante_liquido # Valor Líquido = Principal + Rentabilidade Líquida
     impostos_totais = ir + (rendimento_bruto - rendimento_apos_iof)
+    
+    # Linha 1: Título principal (Ajustado o Padding para mais espaço)
+    # NOVO ESTILO (ajustando a fonte para 18pt e o padding):
+    styles['ResultTitleLarge'].topPadding = 12
+    styles['ResultTitleLarge'].bottomPadding = 12
 
     resultado_completo = [
-        # Linha 1: Título principal (Ocupa 4 colunas com fonte maior)
+        # Linha 1: Título principal 
         [Paragraph("<b>RESULTADO FINAL</b>", styles['ResultTitleLarge']), 
          "", 
          "", 
          ""],
         
         # Linha 2: Cabeçalho das 4 colunas
-        ["VALOR INVESTIDO", "RENTABILIDADE BRUTA", "IMPOSTOS", "RENTABILIDADE LÍQUIDA"],
+        ["VALOR INVESTIDO", "VALOR BRUTO", "IMPOSTOS", "VALOR LÍQUIDO"], # Trocando Rentabilidade por VALOR
         
-        # Linha 3: Valores das 4 colunas
+        # Linha 3: Valores das 4 colunas (agora contêm o principal)
         [brl_pdf(valor_investido), 
-         brl_pdf(rentabilidade_bruta), 
+         brl_pdf(valor_final_bruto), 
          brl_pdf(impostos_totais), 
-         brl_pdf(rendimento_liquido)],
+         brl_pdf(valor_final_liquido)],
     ]
     
     colWidths_4 = [total_width/4] * 4
@@ -520,29 +531,27 @@ def criar_pdf_perfeito():
         ('BACKGROUND', (0,0), (3,0), AZUL_TABELA_PDF), 
         ('LINEBELOW', (0,0), (3,0), 1, colors.white), 
         
-        # Cabeçalho das 4 colunas
+        # Cabeçalho das 4 colunas (Diminuindo a fonte para 9pt)
         ('BACKGROUND', (0,1), (3,1), AZUL_TABELA_PDF), 
         ('TEXTCOLOR', (0,1), (3,1), colors.white),
-        ('FONTSIZE', (0,1), (3,1), 10),
+        ('FONTSIZE', (0,1), (3,1), 9), # FONTE DIMINUÍDA
         ('FONTNAME', (0,1), (3,1), 'Helvetica-Bold'),
-        ('TOPPADDING', (0,1), (3,1), 5),
-        ('BOTTOMPADDING', (0,1), (3,1), 5),
+        ('TOPPADDING', (0,1), (3,1), 4),
+        ('BOTTOMPADDING', (0,1), (3,1), 4),
         
-        # Valores das 4 colunas
+        # Valores das 4 colunas (Diminuindo a fonte para 14pt)
         ('BACKGROUND', (0,2), (3,2), AZUL_TABELA_PDF), 
         ('TEXTCOLOR', (0,2), (3,2), colors.white),
-        ('FONTSIZE', (0,2), (3,2), 16),
+        ('FONTSIZE', (0,2), (3,2), 14), # FONTE DIMINUÍDA
         ('FONTNAME', (0,2), (3,2), 'Helvetica-Bold'),
-        ('TOPPADDING', (0,2), (3,2), 10),
-        ('BOTTOMPADDING', (0,2), (3,2), 10),
+        ('TOPPADDING', (0,2), (3,2), 8),
+        ('BOTTOMPADDING', (0,2), (3,2), 8),
         
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ('GRID', (0,0), (-1,-1), 0, colors.transparent),
     ]))
     story.append(t_res_final)
     
-    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=10)) 
-
     # 9. FUNDAMENTOS DO CDB
     story.append(Paragraph("FUNDAMENTOS DO CDB", styles['SectionTitle'])) 
     
