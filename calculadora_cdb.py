@@ -356,9 +356,8 @@ def criar_pdf_perfeito():
         rightPadding=15, 
         topPadding=0, # REMOVIDO
         bottomPadding=0, # REMOVIDO
-        spaceBefore=10, # MARGEM SUPERIOR
-        spaceAfter=10, # MARGEM INFERIOR
-        spaceAfter=0
+        spaceBefore=12, # AUMENTADO PARA FORÇAR MAIS ESPAÇO ACIMA DO TEXTO
+        spaceAfter=12, # AUMENTADO PARA FORÇAR MAIS ESPAÇO ABAIXO DO TEXTO
     ))
     
     brl_pdf = lambda v: f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
