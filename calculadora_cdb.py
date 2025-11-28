@@ -340,18 +340,18 @@ def criar_pdf_perfeito():
         spaceAfter=0*mm
     ))
     
-    # ESTILO DO TÍTULO DE RESULTADO FINAL: Cor de fundo e altura da linha ajustadas
+    # ESTILO DO TÍTULO DE RESULTADO FINAL: Cor de fundo mantida, altura da linha AUMENTADA
     styles.add(ParagraphStyle(
         name='ResultTitleLarge', 
         fontSize=18, 
         fontName='Helvetica-Bold', 
         alignment=1, 
         textColor=colors.white, 
-        backColor=AZUL_TABELA_PDF, # NOVA COR DE FUNDO
+        backColor=AZUL_TABELA_PDF, # Cor #864df4 mantida
         leftPadding=15, 
         rightPadding=15, 
-        topPadding=14, # ALTURA AUMENTADA
-        bottomPadding=14, # ALTURA AUMENTADA
+        topPadding=18, # ALTURA AUMENTADA PARA 18
+        bottomPadding=18, # ALTURA AUMENTADA PARA 18
         spaceAfter=0
     ))
     
