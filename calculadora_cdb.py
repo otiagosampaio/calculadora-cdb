@@ -552,15 +552,15 @@ def criar_pdf_perfeito():
         "O <b>CDB</b> (Certificado de Depósito Bancário) é um título de renda fixa emitido por bancos para "
         "captar recursos. É considerado um investimento de baixo risco e conta com a garantia do "
         "<b>FGC</b> (Fundo Garantidor de Créditos), que cobre até R$ 250.000 por CPF e por instituição financeira, "
-        "oferecendo segurança ao investidor. A rentabilidade pode ser **Pré-fixada** (taxa definida no início) "
-        "ou **Pós-fixada** (geralmente atrelada a um percentual do CDI)."
+        "oferecendo segurança ao investidor. A rentabilidade pode ser <b>Pré-fixada</b> (taxa definida no início) "
+        "ou <b>Pós-fixada</b> (geralmente atrelada a um percentual do CDI)."
     )
     story.append(Paragraph(fundamentos_texto_p1, styles['FundamentosStyle']))
 
     story.append(Spacer(1, 3*mm)) 
 
     fundamentos_texto_p2 = (
-        "Em relação às características de resgate, a **Liquidez** do CDB pode ser diária (ideal para reserva de emergência) "
+        "Em relação às características de resgate, a <b>Liquidez</b> do CDB pode ser diária (ideal para reserva de emergência) "
         "ou apenas no vencimento (oferecendo historicamente maior retorno). A tributação segue a tabela regressiva do "
         "<b>Imposto de Renda (IR)</b>, onde o imposto diminui quanto maior o prazo do investimento (chegando a 15% após 720 dias). "
         "O <b>Imposto sobre Operações Financeiras (IOF)</b> é isento para resgates feitos após 30 dias."
