@@ -6,6 +6,7 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from reportlab.lib.pagesizes import A4
+# Garante que todos os componentes são importados
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, HRFlowable, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
@@ -23,20 +24,23 @@ FUNDO_GRAFICO = "white"         # Fundo Gráfico Claro
 COR_EIXO_GRAFICO = "#333333"    # Cor de Eixo Gráfico Claro
 
 VERDE_DESTAQUE = '#2E8B57'      # Cor de destaque (Verde)
-# NOVA COR SOLICITADA PARA O TÍTULO DA TABELA DE RESULTADO FINAL
+# COR SOLICITADA PARA O TÍTULO DA TABELA DE RESULTADO FINAL
 AZUL_TABELA_PDF = colors.HexColor("#864df4") 
 
 
 # ===================== FUNÇÃO PARA LOGO COM PROPORÇÃO CORRETA =====================
+# Função refeita para ser mais robusta ao carregar a imagem, usando o objeto Image do ReportLab
 def carregar_logo():
     # Usando a URL do logo com fundo branco (padrão do tema claro)
     url = URL_LOGO_WHITE 
     response = requests.get(url)
-    img = PILImage.open(PIOBytesIO(response.content))
-    largura, altura = img.size
+    img_pil = PILImage.open(PIOBytesIO(response.content))
+    largura, altura = img_pil.size
     proporcao = altura / largura
     largura_desejada = 200 
     altura_calculada = largura_desejada * proporcao
+    
+    # Retorna o objeto Image do ReportLab
     return Image(PIOBytesIO(response.content), width=largura_desejada, height=altura_calculada)
 
 # ===================== FUNÇÃO DE FORMATAÇÃO MONETÁRIA =====================
@@ -340,32 +344,26 @@ def criar_pdf_perfeito():
         spaceAfter=0*mm
     ))
     
-    # ESTILO DO TÍTULO DE RESULTADO FINAL: Cor de fundo mantida, altura da linha AUMENTADA
+    # ESTILO DO TÍTULO DE RESULTADO FINAL: Cor de fundo mantida, altura da linha AUMENTADA novamente para garantir
     styles.add(ParagraphStyle(
         name='ResultTitleLarge', 
-        fontSize=16, 
+        fontSize=18, 
         fontName='Helvetica-Bold', 
         alignment=1, 
         textColor=colors.white, 
         backColor=AZUL_TABELA_PDF, # Cor #864df4 mantida
         leftPadding=15, 
         rightPadding=15, 
-        topPadding=18, # ALTURA AUMENTADA PARA 18
-        bottomPadding=25, # ALTURA AUMENTADA PARA 25
+        topPadding=25, # AUMENTADO PARA 25
+        bottomPadding=25, # AUMENTADO PARA 25
         spaceAfter=0
     ))
     
     brl_pdf = lambda v: f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     
     # 3. Logo (Sempre usando o logo BG-WHITE no PDF)
-    url_logo_pdf = URL_LOGO_WHITE
-    response_pdf = requests.get(url_logo_pdf)
-    img_pil_pdf = PILImage.open(PIOBytesIO(response_pdf.content))
-    largura_pdf, altura_pdf = img_pil_pdf.size
-    proporcao_pdf = altura_pdf / largura_pdf
-    largura_desejada_pdf = 200 
-    altura_calculada_pdf = largura_desejada_pdf * proporcao_pdf
-    logo = Image(PIOBytesIO(response_pdf.content), width=largura_desejada_pdf, height=altura_calculada_pdf)
+    # Chamando a função para carregar o logo de forma robusta
+    logo = carregar_logo()
     logo.hAlign = 'CENTER'
     story.append(logo)
     story.append(Spacer(1, 10*mm)) 
@@ -488,7 +486,7 @@ def criar_pdf_perfeito():
     
     story.append(Spacer(1, 5*mm)) 
 
-    # 8. RESULTADO FINAL (NOVO FORMATO: 4 Colunas com Ajustes de Fonte/Espaçamento)
+    # 8. RESULTADO FINAL (4 Colunas com Ajustes de Fonte/Espaçamento)
     
     # Dados que incluem o principal
     valor_final_bruto = montante_bruto 
@@ -519,7 +517,7 @@ def criar_pdf_perfeito():
     t_res_final.setStyle(TableStyle([
         # Título principal (RESULTADO FINAL)
         ('SPAN', (0,0), (3,0)), 
-        ('BACKGROUND', (0,0), (3,0), AZUL_TABELA_PDF), # NOVA COR
+        ('BACKGROUND', (0,0), (3,0), AZUL_TABELA_PDF), # Cor #864df4 mantida
         ('LINEBELOW', (0,0), (3,0), 1, colors.white), 
         
         # Cabeçalho das 4 colunas (Fonte e Padding ajustados para caber)
@@ -648,14 +646,20 @@ def criar_pdf_perfeito():
 # ===================== BOTÃO PDF =====================
 st.markdown("---")
 if st.button("BAIXAR PROPOSTA PREMIUM", type="primary", use_container_width=True):
+    # O erro 'NameError' na imagem pode ser resolvido garantindo que todas as dependências
+    # estejam carregadas e a função carregar_logo seja chamada corretamente
     with st.spinner("Gerando sua proposta premium..."):
-        pdf_data = criar_pdf_perfeito()
-        b64 = base64.b64encode(pdf_data).decode()
-        nome_arq = f"Proposta_CDB_{nome_cliente.replace(' ', '_')}.pdf"
-        href = f'<a href="data:application/pdf;base64,{b64}" download="{nome_arq}"><h3 style="text-align:center; color:white;">BAIXAR PROPOSTA PREMIUM</h3></a>'
-        st.markdown(href, unsafe_allow_html=True)
-        st.balloons()
-        st.success("Proposta premium gerada com sucesso!")
+        try:
+            pdf_data = criar_pdf_perfeito()
+            b64 = base64.b64encode(pdf_data).decode()
+            nome_arq = f"Proposta_CDB_{nome_cliente.replace(' ', '_')}.pdf"
+            href = f'<a href="data:application/pdf;base64,{b64}" download="{nome_arq}"><h3 style="text-align:center; color:white;">BAIXAR PROPOSTA PREMIUM</h3></a>'
+            st.markdown(href, unsafe_allow_html=True)
+            st.balloons()
+            st.success("Proposta premium gerada com sucesso!")
+        except Exception as e:
+            st.error(f"Ocorreu um erro ao gerar o PDF: {e}")
+
 
 # ===================== RODAPÉ STREAMLIT =====================
 st.markdown(
