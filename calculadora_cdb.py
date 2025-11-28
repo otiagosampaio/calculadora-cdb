@@ -351,7 +351,7 @@ def criar_pdf_perfeito():
         leftPadding=15, 
         rightPadding=15, 
         topPadding=18, # ALTURA AUMENTADA PARA 18
-        bottomPadding=18, # ALTURA AUMENTADA PARA 18
+        bottomPadding=25, # ALTURA AUMENTADA PARA 25
         spaceAfter=0
     ))
     
