@@ -344,7 +344,7 @@ def criar_pdf_perfeito():
         spaceAfter=0*mm
     ))
     
-    # ESTILO DO TÍTULO DE RESULTADO FINAL: Revertendo padding e garantindo o espaçamento por Spacer
+    # ESTILO DO TÍTULO DE RESULTADO FINAL: Usando margens spaceBefore/spaceAfter para forçar altura vertical
     styles.add(ParagraphStyle(
         name='ResultTitleLarge', 
         fontSize=18, 
@@ -354,8 +354,10 @@ def criar_pdf_perfeito():
         backColor=AZUL_TABELA_PDF, # Cor #864df4 mantida
         leftPadding=15, 
         rightPadding=15, 
-        topPadding=10, # VALOR RAZOÁVEL
-        bottomPadding=10, # VALOR RAZOÁVEL
+        topPadding=0, # REMOVIDO
+        bottomPadding=0, # REMOVIDO
+        spaceBefore=10, # MARGEM SUPERIOR
+        spaceAfter=10, # MARGEM INFERIOR
         spaceAfter=0
     ))
     
@@ -494,11 +496,11 @@ def criar_pdf_perfeito():
     impostos_totais = ir + (rendimento_bruto - rendimento_apos_iof)
 
     resultado_completo = [
-        # Linha 1: Título principal. Adicionamos um Spacer para forçar a altura mínima da linha.
+        # Linha 1: Título principal. Usa o spaceBefore/spaceAfter do estilo.
         [Paragraph("<b>RESULTADO FINAL</b>", styles['ResultTitleLarge']), 
-         Spacer(1, 10), # Garante altura mínima 
-         Spacer(1, 10),
-         Spacer(1, 10)],
+         "", 
+         "",
+         ""],
         
         # Linha 2: Cabeçalho das 4 colunas
         ["VALOR INVESTIDO", "VALOR BRUTO", "IMPOSTOS", "VALOR LÍQUIDO"], 
@@ -519,7 +521,7 @@ def criar_pdf_perfeito():
         ('SPAN', (0,0), (3,0)), 
         ('BACKGROUND', (0,0), (3,0), AZUL_TABELA_PDF), # Cor #864df4 mantida
         ('LINEBELOW', (0,0), (3,0), 1, colors.white), 
-        ('VALIGN', (0,0), (3,0), 'MIDDLE'),
+        ('VALIGN', (0,0), (3,0), 'MIDDLE'), # Garante alinhamento vertical
         
         # Cabeçalho das 4 colunas (Fonte e Padding ajustados para caber)
         ('BACKGROUND', (0,1), (3,1), AZUL_TABELA_PDF), 
