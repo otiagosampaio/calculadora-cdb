@@ -343,7 +343,7 @@ def criar_pdf_perfeito():
     # ESTILO DO TÍTULO DE RESULTADO FINAL: Cor de fundo mantida, altura da linha AUMENTADA
     styles.add(ParagraphStyle(
         name='ResultTitleLarge', 
-        fontSize=18, 
+        fontSize=16, 
         fontName='Helvetica-Bold', 
         alignment=1, 
         textColor=colors.white, 
