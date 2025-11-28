@@ -257,7 +257,7 @@ st.markdown("---")
 # Título com cor do tema claro
 st.markdown(f"<h2 style='text-align:center; color:{TEXTO_PRINCIPAL_ST};'>Resultado Final</h2>", unsafe_allow_html=True)
 
-# Exibição simplificada no Streamlit (não precisa de 4 colunas aqui)
+# Exibição simplificada no Streamlit (mantendo o formato original de 3 colunas)
 col1, col2, col3 = st.columns(3)
 brl = lambda v: f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 col1.metric("Valor Bruto", brl(montante_bruto))
@@ -339,7 +339,7 @@ def criar_pdf_perfeito():
         spaceAfter=0*mm
     ))
     
-    # NOVO ESTILO: Título de Resultado Final com fonte maior (18pt)
+    # NOVO ESTILO: Título de Resultado Final com fonte maior (18pt) e padding ajustado
     styles.add(ParagraphStyle(
         name='ResultTitleLarge', 
         fontSize=18, 
@@ -349,8 +349,8 @@ def criar_pdf_perfeito():
         backColor=AZUL_TABELA_PDF, 
         leftPadding=15, 
         rightPadding=15, 
-        topPadding=10, 
-        bottomPadding=10, 
+        topPadding=12, # AUMENTADO
+        bottomPadding=12, # AUMENTADO
         spaceAfter=0
     ))
     
@@ -487,34 +487,24 @@ def criar_pdf_perfeito():
     
     story.append(Spacer(1, 5*mm)) 
 
-# ... (código anterior mantido)
-
-# ===================== PDF GERAÇÃO (Tema Claro com 4 Colunas no Resultado Final) =====================
-def criar_pdf_perfeito():
-       
     # 8. RESULTADO FINAL (NOVO FORMATO: 4 Colunas com Ajustes de Fonte/Espaçamento)
     
     # NOVOS DADOS (Incluindo o Principal, conforme solicitado)
     valor_final_bruto = montante_bruto  # Valor Bruto = Principal + Rentabilidade Bruta
     valor_final_liquido = montante_liquido # Valor Líquido = Principal + Rentabilidade Líquida
     impostos_totais = ir + (rendimento_bruto - rendimento_apos_iof)
-    
-    # Linha 1: Título principal (Ajustado o Padding para mais espaço)
-    # NOVO ESTILO (ajustando a fonte para 18pt e o padding):
-    styles['ResultTitleLarge'].topPadding = 12
-    styles['ResultTitleLarge'].bottomPadding = 12
 
     resultado_completo = [
-        # Linha 1: Título principal 
+        # Linha 1: Título principal (Ajustado o Padding para mais espaço)
         [Paragraph("<b>RESULTADO FINAL</b>", styles['ResultTitleLarge']), 
          "", 
          "", 
          ""],
         
-        # Linha 2: Cabeçalho das 4 colunas
-        ["VALOR INVESTIDO", "VALOR BRUTO", "IMPOSTOS", "VALOR LÍQUIDO"], # Trocando Rentabilidade por VALOR
+        # Linha 2: Cabeçalho das 4 colunas (Novos títulos e fonte menor)
+        ["VALOR INVESTIDO", "VALOR BRUTO", "IMPOSTOS", "VALOR LÍQUIDO"], 
         
-        # Linha 3: Valores das 4 colunas (agora contêm o principal)
+        # Linha 3: Valores das 4 colunas (agora contêm o principal e fonte menor)
         [brl_pdf(valor_investido), 
          brl_pdf(valor_final_bruto), 
          brl_pdf(impostos_totais), 
@@ -531,7 +521,7 @@ def criar_pdf_perfeito():
         ('BACKGROUND', (0,0), (3,0), AZUL_TABELA_PDF), 
         ('LINEBELOW', (0,0), (3,0), 1, colors.white), 
         
-        # Cabeçalho das 4 colunas (Diminuindo a fonte para 9pt)
+        # Cabeçalho das 4 colunas (Diminuindo a fonte para caber)
         ('BACKGROUND', (0,1), (3,1), AZUL_TABELA_PDF), 
         ('TEXTCOLOR', (0,1), (3,1), colors.white),
         ('FONTSIZE', (0,1), (3,1), 9), # FONTE DIMINUÍDA
@@ -539,7 +529,7 @@ def criar_pdf_perfeito():
         ('TOPPADDING', (0,1), (3,1), 4),
         ('BOTTOMPADDING', (0,1), (3,1), 4),
         
-        # Valores das 4 colunas (Diminuindo a fonte para 14pt)
+        # Valores das 4 colunas (Diminuindo a fonte para caber)
         ('BACKGROUND', (0,2), (3,2), AZUL_TABELA_PDF), 
         ('TEXTCOLOR', (0,2), (3,2), colors.white),
         ('FONTSIZE', (0,2), (3,2), 14), # FONTE DIMINUÍDA
@@ -552,6 +542,8 @@ def criar_pdf_perfeito():
     ]))
     story.append(t_res_final)
     
+    story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=10)) 
+
     # 9. FUNDAMENTOS DO CDB
     story.append(Paragraph("FUNDAMENTOS DO CDB", styles['SectionTitle'])) 
     
@@ -643,7 +635,7 @@ def criar_pdf_perfeito():
     story.append(Paragraph("DISCLAIMER", styles['SectionTitle'])) 
     
     disclaimer_text = (
-        "A Traders Distribuidora de Valores Mobiliários Ltda., com CNPJ sob o nº 62.280.490/0001-84 é uma instituição financeira autorizada a funcionar pelo Banco Central do Brasil, que atua como Participante de Negociação (PN) e realiza suas operações através de um Participante de Negociação Pleno (PNP), Terra Investimentos Ltda. Toda comunicação através da rede mundial de computadores está sujeita a interrupções ou atrasos, podendo impedir ou prejudicar o envio das ordens ou a recepção de informações atualizadas. Antes de tomar qualquer decisão de investimento, recomendamos que os investidores avaliem cuidadosamente seus objetivos financeiros e seu perfil de risco. A Traders DTVM exime-se de responsabilidade por danos sofridos por seus clientes, por força de falha de serviços disponibilizados por terceiros e não se responsabiliza por eventuais perdas financeiras decorrentes da negociação de ativos, nem garante a rentabilidade dos investimentos. O histórico de desempenho de qualquer ativo não assegura resultados futuros. A negociação em mercados financeiros está sujeita a volatilidade e pode envolver riscos significativos, incluindo, mas não se limitando ao risco de mercado, risco de liquidez e risco de crédito."
+        "A Traders Distribuidora de Valores Mobiliários Ltda., com CNPJ sob o nº 62.280.490/0001-84 é uma instituição financeira autorizada a funcionar pelo Banco Central do Brasil, que atua como Participante de Negociação (PN) e realiza suas operações através de um Participante de Negociação Pleno (PNP), Terra Investimentos Ltda. Toda comunicação através da rede mundial de computadores está sujeita a interrupções ou atrasos, podendo impedir ou prejudicar o envio das ordens ou a recepção de informações atualizadas. Antes de tomar qualquer decisão de investimento, recomendamos que os investidores avaliem cuidadosamente seus objetivos financeiros e seu perfil de risco. A Traders DTVM exime-se de responsabilidade por danos sofridos por seus clientes, por força de falha de serviços disponibilizados por terceiros e não se responsabiliza por eventuais perdas financeiras decorrentes da negociação de ativos, nem garante a rentabilidade dos investimentos. O histórico de desempenho de qualquer ativo não assegura resultados futuros. A negociação em mercados financeiros está sujeita a volatilidade e pode envolver riscos significantes, incluindo, mas não se limitando ao risco de mercado, risco de liquidez e risco de crédito."
     )
     story.append(Paragraph(disclaimer_text, styles['Disclaimer']))
 
