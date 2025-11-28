@@ -347,7 +347,7 @@ def criar_pdf_perfeito():
     # ESTILO DO TÍTULO DE RESULTADO FINAL: Usando margens spaceBefore/spaceAfter para forçar altura vertical
     styles.add(ParagraphStyle(
         name='ResultTitleLarge', 
-        fontSize=14, 
+        fontSize=13, 
         fontName='Helvetica-Bold', 
         alignment=1, 
         textColor=colors.white, 
