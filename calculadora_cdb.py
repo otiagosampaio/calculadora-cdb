@@ -23,7 +23,8 @@ FUNDO_GRAFICO = "white"         # Fundo Gráfico Claro
 COR_EIXO_GRAFICO = "#333333"    # Cor de Eixo Gráfico Claro
 
 VERDE_DESTAQUE = '#2E8B57'      # Cor de destaque (Verde)
-AZUL_TABELA_PDF = colors.HexColor("#0f172a") # Cor escura para tabelas no PDF (mantido o original)
+# NOVA COR SOLICITADA PARA O TÍTULO DA TABELA DE RESULTADO FINAL
+AZUL_TABELA_PDF = colors.HexColor("#864df4") 
 
 
 # ===================== FUNÇÃO PARA LOGO COM PROPORÇÃO CORRETA =====================
@@ -339,18 +340,18 @@ def criar_pdf_perfeito():
         spaceAfter=0*mm
     ))
     
-    # NOVO ESTILO: Título de Resultado Final com fonte maior (18pt) e padding ajustado
+    # ESTILO DO TÍTULO DE RESULTADO FINAL: Cor de fundo e altura da linha ajustadas
     styles.add(ParagraphStyle(
         name='ResultTitleLarge', 
         fontSize=18, 
         fontName='Helvetica-Bold', 
         alignment=1, 
         textColor=colors.white, 
-        backColor=AZUL_TABELA_PDF, 
+        backColor=AZUL_TABELA_PDF, # NOVA COR DE FUNDO
         leftPadding=15, 
         rightPadding=15, 
-        topPadding=12, # AUMENTADO
-        bottomPadding=12, # AUMENTADO
+        topPadding=14, # ALTURA AUMENTADA
+        bottomPadding=14, # ALTURA AUMENTADA
         spaceAfter=0
     ))
     
@@ -489,22 +490,22 @@ def criar_pdf_perfeito():
 
     # 8. RESULTADO FINAL (NOVO FORMATO: 4 Colunas com Ajustes de Fonte/Espaçamento)
     
-    # NOVOS DADOS (Incluindo o Principal, conforme solicitado)
-    valor_final_bruto = montante_bruto  # Valor Bruto = Principal + Rentabilidade Bruta
-    valor_final_liquido = montante_liquido # Valor Líquido = Principal + Rentabilidade Líquida
+    # Dados que incluem o principal
+    valor_final_bruto = montante_bruto 
+    valor_final_liquido = montante_liquido 
     impostos_totais = ir + (rendimento_bruto - rendimento_apos_iof)
 
     resultado_completo = [
-        # Linha 1: Título principal (Ajustado o Padding para mais espaço)
+        # Linha 1: Título principal (Cor e Altura ajustadas)
         [Paragraph("<b>RESULTADO FINAL</b>", styles['ResultTitleLarge']), 
          "", 
          "", 
          ""],
         
-        # Linha 2: Cabeçalho das 4 colunas (Novos títulos e fonte menor)
+        # Linha 2: Cabeçalho das 4 colunas
         ["VALOR INVESTIDO", "VALOR BRUTO", "IMPOSTOS", "VALOR LÍQUIDO"], 
         
-        # Linha 3: Valores das 4 colunas (agora contêm o principal e fonte menor)
+        # Linha 3: Valores das 4 colunas
         [brl_pdf(valor_investido), 
          brl_pdf(valor_final_bruto), 
          brl_pdf(impostos_totais), 
@@ -518,21 +519,21 @@ def criar_pdf_perfeito():
     t_res_final.setStyle(TableStyle([
         # Título principal (RESULTADO FINAL)
         ('SPAN', (0,0), (3,0)), 
-        ('BACKGROUND', (0,0), (3,0), AZUL_TABELA_PDF), 
+        ('BACKGROUND', (0,0), (3,0), AZUL_TABELA_PDF), # NOVA COR
         ('LINEBELOW', (0,0), (3,0), 1, colors.white), 
         
-        # Cabeçalho das 4 colunas (Diminuindo a fonte para caber)
+        # Cabeçalho das 4 colunas (Fonte e Padding ajustados para caber)
         ('BACKGROUND', (0,1), (3,1), AZUL_TABELA_PDF), 
         ('TEXTCOLOR', (0,1), (3,1), colors.white),
-        ('FONTSIZE', (0,1), (3,1), 9), # FONTE DIMINUÍDA
+        ('FONTSIZE', (0,1), (3,1), 9), 
         ('FONTNAME', (0,1), (3,1), 'Helvetica-Bold'),
         ('TOPPADDING', (0,1), (3,1), 4),
         ('BOTTOMPADDING', (0,1), (3,1), 4),
         
-        # Valores das 4 colunas (Diminuindo a fonte para caber)
+        # Valores das 4 colunas (Fonte e Padding ajustados)
         ('BACKGROUND', (0,2), (3,2), AZUL_TABELA_PDF), 
         ('TEXTCOLOR', (0,2), (3,2), colors.white),
-        ('FONTSIZE', (0,2), (3,2), 14), # FONTE DIMINUÍDA
+        ('FONTSIZE', (0,2), (3,2), 14), 
         ('FONTNAME', (0,2), (3,2), 'Helvetica-Bold'),
         ('TOPPADDING', (0,2), (3,2), 8),
         ('BOTTOMPADDING', (0,2), (3,2), 8),
