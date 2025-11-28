@@ -344,7 +344,7 @@ def criar_pdf_perfeito():
         spaceAfter=0*mm
     ))
     
-    # ESTILO DO TÍTULO DE RESULTADO FINAL: Cor de fundo mantida, altura da linha AUMENTADA novamente para garantir
+    # ESTILO DO TÍTULO DE RESULTADO FINAL: Revertendo padding e garantindo o espaçamento por Spacer
     styles.add(ParagraphStyle(
         name='ResultTitleLarge', 
         fontSize=18, 
@@ -354,8 +354,8 @@ def criar_pdf_perfeito():
         backColor=AZUL_TABELA_PDF, # Cor #864df4 mantida
         leftPadding=15, 
         rightPadding=15, 
-        topPadding=25, # AUMENTADO PARA 25
-        bottomPadding=25, # AUMENTADO PARA 25
+        topPadding=10, # VALOR RAZOÁVEL
+        bottomPadding=10, # VALOR RAZOÁVEL
         spaceAfter=0
     ))
     
@@ -494,11 +494,11 @@ def criar_pdf_perfeito():
     impostos_totais = ir + (rendimento_bruto - rendimento_apos_iof)
 
     resultado_completo = [
-        # Linha 1: Título principal (Cor e Altura ajustadas)
+        # Linha 1: Título principal. Adicionamos um Spacer para forçar a altura mínima da linha.
         [Paragraph("<b>RESULTADO FINAL</b>", styles['ResultTitleLarge']), 
-         "", 
-         "", 
-         ""],
+         Spacer(1, 10), # Garante altura mínima 
+         Spacer(1, 10),
+         Spacer(1, 10)],
         
         # Linha 2: Cabeçalho das 4 colunas
         ["VALOR INVESTIDO", "VALOR BRUTO", "IMPOSTOS", "VALOR LÍQUIDO"], 
@@ -519,6 +519,7 @@ def criar_pdf_perfeito():
         ('SPAN', (0,0), (3,0)), 
         ('BACKGROUND', (0,0), (3,0), AZUL_TABELA_PDF), # Cor #864df4 mantida
         ('LINEBELOW', (0,0), (3,0), 1, colors.white), 
+        ('VALIGN', (0,0), (3,0), 'MIDDLE'),
         
         # Cabeçalho das 4 colunas (Fonte e Padding ajustados para caber)
         ('BACKGROUND', (0,1), (3,1), AZUL_TABELA_PDF), 
@@ -646,8 +647,6 @@ def criar_pdf_perfeito():
 # ===================== BOTÃO PDF =====================
 st.markdown("---")
 if st.button("BAIXAR PROPOSTA PREMIUM", type="primary", use_container_width=True):
-    # O erro 'NameError' na imagem pode ser resolvido garantindo que todas as dependências
-    # estejam carregadas e a função carregar_logo seja chamada corretamente
     with st.spinner("Gerando sua proposta premium..."):
         try:
             pdf_data = criar_pdf_perfeito()
