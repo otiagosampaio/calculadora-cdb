@@ -28,6 +28,48 @@ VERDE_DESTAQUE = '#2E8B57'      # Cor de destaque (Verde)
 AZUL_TABELA_PDF = colors.HexColor("#864df4") 
 
 
+# ===================== FUNÇÕES DE CÁLCULO DE IMPOSTOS (NOVO) =====================
+
+# Tabela IOF (percentual de desconto por dia)
+iof_tab_valores = [0.96,0.93,0.90,0.86,0.83,0.80,0.76,0.73,0.70,0.66,0.63,0.60,0.56,0.53,0.50,
+                   0.46,0.43,0.40,0.36,0.33,0.30,0.26,0.23,0.20,0.16,0.13,0.10,0.06,0.03,0.00] # 30 dias (index 0 é o dia 1)
+
+# Tabela Regressiva de IR para Renda Fixa
+def obter_aliquota_ir(dias):
+    if dias <= 180:
+        return 0.225
+    elif dias <= 360:
+        return 0.20
+    elif dias <= 720:
+        return 0.175
+    else:
+        return 0.15
+
+# Função principal que calcula IR e IOF baseado no tipo de investimento
+def calcular_impostos(prazo_dias, rendimento_bruto, tipo_investimento):
+    
+    # 1. Isenção de LCI/LCA: Isentos de IR e IOF para Pessoas Físicas.
+    if tipo_investimento in ("LCI", "LCA"):
+        # Retorna IR, IOF e Alíquota IR (zero)
+        return 0.0, 0.0, 0.0
+        
+    # 2. Imposto sobre Operações Financeiras (IOF) - Apenas CDBs/LC
+    iof_valor = 0.0
+    if prazo_dias < 30:
+        # Pega a alíquota de IOF
+        aliquota_iof = iof_tab_valores[prazo_dias - 1] # Index 0 é o dia 1
+        iof_valor = rendimento_bruto * aliquota_iof
+        
+    # Rendimento que serve de base para o IR (Rendimento Bruto - IOF)
+    rendimento_apos_iof = rendimento_bruto - iof_valor
+    
+    # 3. Imposto de Renda (IR)
+    aliquota_ir = obter_aliquota_ir(prazo_dias)
+    ir_valor = rendimento_apos_iof * aliquota_ir
+    
+    return ir_valor, iof_valor, aliquota_ir
+
+
 # ===================== FUNÇÃO PARA LOGO COM PROPORÇÃO CORRETA =====================
 # Função refeita para ser mais robusta ao carregar a imagem, usando o objeto Image do ReportLab
 def carregar_logo():
@@ -78,7 +120,7 @@ def desformatar_moeda(valor_formatado):
         return 0.0
 
 # ===================== CONFIGURAÇÃO =====================
-st.set_page_config(page_title="Traders Corretora - CDB", layout="centered")
+st.set_page_config(page_title="Traders Corretora - CDB/LCI/LCA", layout="centered")
 
 # ===================== LOGO + TÍTULO (Streamlit Display) =====================
 st.markdown(
@@ -89,7 +131,7 @@ st.markdown(
 )
 # Título principal com cor do tema claro
 st.markdown(f"<h2 style='text-align: center; color: {TEXTO_PRINCIPAL_ST};'>Calculadora de Investimentos</h2>", unsafe_allow_html=True)
-st.markdown(f"<p style='text-align: center; color: {TEXTO_SECUNDARIO_ST}; font-size: 17px; margin-bottom: 30px;'>Simule rendimentos com a calculadora de CDB e descubra o retorno esperado para o cliente!</p>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align: center; color: {TEXTO_SECUNDARIO_ST}; font-size: 17px; margin-bottom: 30px;'>Simule rendimentos com a calculadora de Renda Fixa e descubra o retorno esperado para o cliente!</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ===================== PARÂMETROS E ESTADOS INICIAIS =====================
@@ -106,6 +148,9 @@ st.subheader("Dados da Simulação")
 c1, c2 = st.columns(2)
 
 with c1:
+    # NOVO: CÓDIGO DO CLIENTE
+    codigo_cliente = st.text_input("Código do Cliente", "CLI_001") 
+    
     nome_cliente = st.text_input("Nome do Cliente", "João Silva")
     nome_assessor = st.text_input("Nome do Assessor", "Seu Nome")
 
@@ -128,16 +173,24 @@ with c1:
     
 with c2:
     data_simulacao = st.date_input("Data da Simulação", datetime.date.today(), format="DD/MM/YYYY")
-    tipo_cdb = st.selectbox("Tipo de CDB", ["Pré-fixado", "Pós-fixado (% do CDI)"])
+    
+    # ATUALIZADO: Incluir LCI e LCA
+    tipo_investimento = st.selectbox(
+        "Tipo de Ativo", 
+        ["CDB Pré-fixado", "CDB Pós-fixado (% do CDI)", "LCI", "LCA"]
+    )
 
     # Input de Taxa 
-    if tipo_cdb == "Pós-fixado (% do CDI)":
+    if "Pós-fixado" in tipo_investimento:
         taxa_cdi = st.number_input("Taxa CDI anual (Benchmark) (%)", value=taxa_cdi_mercado, step=0.05)
         perc_cdi = st.number_input("Percentual do CDI (%)", value=125.0, step=1.0)
         taxa_anual = taxa_cdi * (perc_cdi / 100)
         dias_ano = 252
-    else:
-        taxa_anual = st.number_input("Taxa pré-fixada anual (%)", value=17.00, step=0.05)
+    else: # Pré-fixado, LCI ou LCA
+        taxa_label = f"Taxa anual ({tipo_investimento}) (%)"
+        # Ajusta o valor padrão de LCI/LCA, que tendem a ser menores que o CDB devido à isenção
+        default_rate = 14.00 if tipo_investimento in ("LCI", "LCA") else 17.00
+        taxa_anual = st.number_input(taxa_label, value=default_rate, step=0.05)
         dias_ano = 360
         perc_cdi = 0.0
 
@@ -151,7 +204,7 @@ with st.expander("Preferências do Investimento", expanded=True):
     with col2:
         data_vencimento = st.date_input("Data do resgate", data_aplicacao + relativedelta(months=+12), format="DD/MM/YYYY")
 
-# ===================== CÁLCULOS CDB =====================
+# ===================== CÁLCULOS PRINCIPAIS (ATUALIZADO) =====================
 if valor_investido <= 0: st.warning("Valor investido deve ser maior que zero."); st.stop()
 
 prazo_meses = (data_vencimento.year - data_aplicacao.year)*12 + (data_vencimento.month - data_aplicacao.month)
@@ -159,19 +212,16 @@ if data_vencimento.day < data_aplicacao.day: prazo_meses -= 1
 prazo_dias = (data_vencimento - data_aplicacao).days
 if prazo_dias <= 0: st.error("Data de resgate deve ser posterior"); st.stop()
 
+# Cálculo do Montante Bruto (igual para todos)
 taxa_diaria = (1 + taxa_anual/100)**(1/dias_ano) - 1
 montante_bruto = valor_investido * (1 + taxa_diaria)**prazo_dias
 rendimento_bruto = montante_bruto - valor_investido # RENTABILIDADE BRUTA
 
-rendimento_apos_iof = rendimento_bruto
-if prazo_dias < 30:
-    iof_tab = [0.96,0.93,0.90,0.86,0.83,0.80,0.76,0.73,0.70,0.66,0.63,0.60,0.56,0.53,0.50,
-               0.46,0.43,0.40,0.36,0.33,0.30,0.26,0.23,0.20,0.16,0.13,0.10,0.06,0.03,0.00]
-    rendimento_apos_iof *= (1 - iof_tab[prazo_dias-1])
+# CÁLCULO DOS IMPOSTOS (USA FUNÇÃO REFATORADA)
+ir, iof, aliquota_ir = calcular_impostos(prazo_dias, rendimento_bruto, tipo_investimento)
 
-aliquota_ir = 22.5 if prazo_dias <= 180 else 20.0 if prazo_dias <= 360 else 17.5 if prazo_dias <= 720 else 15.0
-ir = rendimento_apos_iof * (aliquota_ir/100)
-montante_liquido = valor_investido + rendimento_apos_iof - ir
+impostos_totais = ir + iof
+montante_liquido = montante_bruto - impostos_totais
 rendimento_liquido = montante_liquido - valor_investido # RENTABILIDADE LÍQUIDA
 
 # ===================== CÁLCULOS BENCHMARKS =====================
@@ -222,7 +272,7 @@ ax.tick_params(axis='y', colors=COR_EIXO_GRAFICO)
 ax.yaxis.label.set_color(COR_EIXO_GRAFICO)
 ax.title.set_color(TEXTO_PRINCIPAL_ST)
 
-ax.plot(datas_graf, bruto_graf, label="CDB Bruto", color="#6B48FF", linewidth=2, alpha=0.9)
+ax.plot(datas_graf, bruto_graf, label=f"{tipo_investimento} Bruto", color="#6B48FF", linewidth=2, alpha=0.9)
 ax.plot(datas_graf, bruto_cdi_graf, label="Benchmark: CDI", color="#FF5733", linestyle="--", linewidth=1.5)
 ax.plot(datas_graf, bruto_poupanca_graf, label="Benchmark: Poupança", color="#337AFF", linestyle=":", linewidth=1.5)
 
@@ -234,7 +284,7 @@ ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
 
 # ANOTAÇÕES DE VALORES FINAIS NO GRÁFICO (cor adaptativa)
 dados_finais = [
-    (montante_bruto, "#6B48FF", "CDB"),
+    (montante_bruto, "#6B48FF", "Ativo"),
     (bruto_cdi_graf[-1], "#FF5733", "CDI"),
     (bruto_poupanca_graf[-1], "#337AFF", "Poupança"),
 ]
@@ -262,12 +312,36 @@ st.markdown("---")
 # Título com cor do tema claro
 st.markdown(f"<h2 style='text-align:center; color:{TEXTO_PRINCIPAL_ST};'>Resultado Final</h2>", unsafe_allow_html=True)
 
+# NOVO: Exibir informações do cliente e ativo
+col_cli, col_ativo = st.columns(2)
+col_cli.metric("Código do Cliente", codigo_cliente)
+col_ativo.metric("Ativo Simulado", tipo_investimento)
+st.markdown("---") # Separador visual
+
 # Exibição simplificada no Streamlit (mantendo o formato original de 3 colunas)
 col1, col2, col3 = st.columns(3)
 brl = lambda v: f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 col1.metric("Valor Bruto", brl(montante_bruto))
-col2.metric("Impostos", brl(ir + (rendimento_bruto - rendimento_apos_iof)))
+col2.metric("Impostos", brl(impostos_totais)) # Usa a variável consolidada
 col3.metric("Valor Líquido", brl(montante_liquido), delta=brl(rendimento_liquido))
+
+# NOVO: Mensagem de isenção/tributação
+if tipo_investimento in ("LCI", "LCA"):
+    st.markdown(
+        f"<p style='text-align:center; color:{VERDE_DESTAQUE}; font-size:14px;'>* **Isenção de Imposto de Renda e IOF:** Ativos de LCI/LCA são isentos para Pessoa Física.</p>",
+        unsafe_allow_html=True
+    )
+elif ir > 0:
+    st.markdown(
+        f"<p style='text-align:center; color:{TEXTO_SECUNDARIO_ST}; font-size:14px;'>* Imposto de Renda de {aliquota_ir * 100:.1f}% aplicado sobre o rendimento após IOF.</p>",
+        unsafe_allow_html=True
+    )
+else:
+    st.markdown(
+        f"<p style='text-align:center; color:{VERDE_DESTAQUE}; font-size:14px;'>* IOF e IR zerados: prazo de aplicação superior a 30 dias.</p>",
+        unsafe_allow_html=True
+    )
+
 
 # ===================== GERAR PNG DO GRÁFICO (FUNDO BRANCO PARA PDF) =====================
 def grafico_png():
@@ -370,17 +444,33 @@ def criar_pdf_perfeito():
     story.append(Spacer(1, 10*mm)) 
     
     # 4. Título Principal
-    story.append(Paragraph("Simulação de Investimento - CDB Pré e Pós-fixado", styles['TitlePDF']))
-    story.append(Paragraph("Projeção personalizada considerando IR e IOF", styles['SubTitlePDF']))
+    
+    titulo_pdf = "Simulação de Investimento - CDB / LCI / LCA"
+    subtitulo_pdf = "Projeção personalizada considerando IR, IOF e Isenções"
+    
+    story.append(Paragraph(titulo_pdf, styles['TitlePDF']))
+    story.append(Paragraph(subtitulo_pdf, styles['SubTitlePDF']))
     
     story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=5, spaceAfter=10))
 
-    # 5. DADOS DA SIMULAÇÃO
+    # 5. DADOS DA SIMULAÇÃO (ATUALIZADO)
     story.append(Paragraph("DADOS DA SIMULAÇÃO", styles['SectionTitle']))
     
-    taxa_retorno_pdf = f"{taxa_anual:.2f}% a.a." if tipo_cdb == "Pré-fixado" else f"{perc_cdi:.2f}% do CDI"
+    # Determina o rótulo da taxa e IR para o PDF
+    if "Pós-fixado" in tipo_investimento:
+        taxa_retorno_pdf = f"{perc_cdi:.2f}% do CDI"
+    else:
+        taxa_retorno_pdf = f"{taxa_anual:.2f}% a.a."
+        
+    aliquota_ir_display = f"{aliquota_ir * 100:.1f}%" if aliquota_ir > 0 else "ISENTO"
     
     data_formatada = [
+        # NOVO: Código do Cliente e Ativo Simulado
+        [Paragraph("Código do Cliente", styles['DataLabel']), 
+         Paragraph(codigo_cliente, styles['DataValue']), 
+         Paragraph("Ativo Simulado", styles['DataLabel']), 
+         Paragraph(tipo_investimento, styles['DataValue'])],
+         
         [Paragraph("Nome do cliente", styles['DataLabel']), 
          Paragraph(nome_cliente, styles['DataValue']), 
          Paragraph("Data da simulação", styles['DataLabel']), 
@@ -388,11 +478,11 @@ def criar_pdf_perfeito():
         
         [Paragraph("Valor investido", styles['DataLabel']), 
          Paragraph(brl_pdf(valor_investido), styles['DataValue']), 
-         Paragraph("Tipo de CDB", styles['DataLabel']), 
-         Paragraph(tipo_cdb.split('(')[0].strip(), styles['DataValue'])],
+         Paragraph("Taxa de Retorno", styles['DataLabel']), 
+         Paragraph(taxa_retorno_pdf, styles['DataValue'])],
          
-        [Paragraph("Taxa de Retorno", styles['DataLabel']), 
-         Paragraph(taxa_retorno_pdf, styles['DataValue']), 
+        [Paragraph("IR Aplicado", styles['DataLabel']), # NOVO
+         Paragraph(aliquota_ir_display, styles['DataValue']), 
          Paragraph("Benchmark CDI", styles['DataLabel']), 
          Paragraph(f"{taxa_cdi:.2f}% a.a.", styles['DataValue'])]
     ]
@@ -417,12 +507,15 @@ def criar_pdf_perfeito():
 
     story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=5, spaceAfter=10))
     
-    # 6. PREFERÊNCIAS DO INVESTIMENTO
+    # 6. PREFERÊNCIAS DO INVESTIMENTO (ATUALIZADO)
     story.append(Paragraph("PREFERÊNCIAS DO INVESTIMENTO", styles['SectionTitle']))
     
     icone_data_app = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>d</font>", styles['DataLabel'])
     icone_data_venc = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>d</font>", styles['DataLabel'])
     icone_consideracoes = Paragraph("<font face='ZapfDingbats' size='10' color='#1e3a8a'>I</font>", styles['DataLabel'])
+    
+    # ATUALIZADO: Considerações
+    consideracoes_texto = "Isento de IR/IOF" if tipo_investimento in ("LCI", "LCA") else "IR, IOF"
     
     prefs_data = [
         [icone_data_app, Paragraph("Data da Aplicação", styles['DataLabel']), 
@@ -431,7 +524,7 @@ def criar_pdf_perfeito():
         
         [Spacer(1,1), Paragraph(data_aplicacao.strftime('%d/%m/%Y'), styles['PrefValue']), 
          Spacer(1,1), Paragraph(data_vencimento.strftime('%d/%m/%Y'), styles['PrefValue']), 
-         Spacer(1,1), Paragraph("IR, IOF", styles['PrefValue'])]
+         Spacer(1,1), Paragraph(consideracoes_texto, styles['PrefValue'])]
     ]
     
     largura_pref = total_width / 3
@@ -466,9 +559,9 @@ def criar_pdf_perfeito():
     
     valor_liquido_formatado = f"<b><font color='{VERDE_DESTAQUE}'>{brl_pdf(montante_liquido)}</font></b>" 
     
-    taxa_retorno_resumo = f"{taxa_anual:.2f}% a.a." if tipo_cdb == "Pré-fixado" else f"{perc_cdi:.2f}% do CDI"
+    taxa_retorno_resumo = taxa_retorno_pdf
     
-    resumo_texto = f"Com um investimento inicial de {brl_pdf(valor_investido)} em um CDB com taxa de {taxa_retorno_resumo} por um período de {meses} meses, o valor líquido será de {valor_liquido_formatado}."
+    resumo_texto = f"Com um investimento inicial de {brl_pdf(valor_investido)} em um ativo de {tipo_investimento} com taxa de {taxa_retorno_resumo} por um período de {meses} meses, o valor líquido será de {valor_liquido_formatado}."
 
     resumo_paragrafo = Paragraph(resumo_texto, styles['ResumoStyle'])
 
@@ -492,7 +585,8 @@ def criar_pdf_perfeito():
     # Dados que incluem o principal
     valor_final_bruto = montante_bruto 
     valor_final_liquido = montante_liquido 
-    impostos_totais = ir + (rendimento_bruto - rendimento_apos_iof)
+    # Já temos o valor de impostos_totais calculado
+    impostos_totais_display = impostos_totais
 
     resultado_completo = [
         # Linha 1: Título principal. Usa o spaceBefore/spaceAfter do estilo.
@@ -507,7 +601,7 @@ def criar_pdf_perfeito():
         # Linha 3: Valores das 4 colunas
         [brl_pdf(valor_investido), 
          brl_pdf(valor_final_bruto), 
-         brl_pdf(impostos_totais), 
+         brl_pdf(impostos_totais_display), 
          brl_pdf(valor_final_liquido)],
     ]
     
@@ -545,27 +639,39 @@ def criar_pdf_perfeito():
     
     story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=colors.lightgrey, spaceBefore=10, spaceAfter=10)) 
 
-    # 9. FUNDAMENTOS DO CDB
-    story.append(Paragraph("FUNDAMENTOS DO CDB", styles['SectionTitle'])) 
+    # 9. FUNDAMENTOS DO ATIVO (ATUALIZADO)
+    story.append(Paragraph(f"FUNDAMENTOS DO ATIVO ({tipo_investimento})", styles['SectionTitle'])) 
     
-    fundamentos_texto_p1 = (
-        "O <b>CDB</b> (Certificado de Depósito Bancário) é um título de renda fixa emitido por bancos para "
-        "captar recursos. É considerado um investimento de baixo risco e conta com a garantia do "
-        "<b>FGC</b> (Fundo Garantidor de Créditos), que cobre até R$ 250.000 por CPF e por instituição financeira, "
-        "oferecendo segurança ao investidor. A rentabilidade pode ser <b>Pré-fixada</b> (taxa definida no início) "
-        "ou <b>Pós-fixada</b> (geralmente atrelada a um percentual do CDI)."
-    )
-    story.append(Paragraph(fundamentos_texto_p1, styles['FundamentosStyle']))
+    if tipo_investimento in ("LCI", "LCA"):
+        fundamentos_p1 = (
+            f"A <b>{tipo_investimento}</b> (Letra de Crédito {'Imobiliário' if tipo_investimento == 'LCI' else 'do Agronegócio'}) "
+            "é um título de renda fixa emitido por bancos para financiar os respectivos setores. É considerado um investimento de "
+            "baixo risco, conta com a garantia do <b>FGC</b> (Fundo Garantidor de Créditos) e, para Pessoa Física, é "
+            "<b>ISENTO de Imposto de Renda e IOF</b>, o que o torna altamente atrativo."
+        )
+        fundamentos_p2 = (
+            "As Letras de Crédito geralmente têm prazos de vencimento definidos e carência, não permitindo resgate diário. "
+            "A rentabilidade é tipicamente <b>Pré-fixada</b> ou <b>Pós-fixada</b> (atrelada ao CDI). A isenção de imposto faz com "
+            "que a rentabilidade bruta seja igual à líquida."
+        )
+    else:
+        fundamentos_p1 = (
+            "O <b>CDB</b> (Certificado de Depósito Bancário) é um título de renda fixa emitido por bancos para "
+            "captar recursos. É considerado um investimento de baixo risco e conta com a garantia do "
+            "<b>FGC</b> (Fundo Garantidor de Créditos), que cobre até R$ 250.000 por CPF e por instituição financeira, "
+            "oferecendo segurança ao investidor. A rentabilidade pode ser <b>Pré-fixada</b> (taxa definida no início) "
+            "ou <b>Pós-fixada</b> (geralmente atrelada a um percentual do CDI)."
+        )
+        fundamentos_p2 = (
+            "Em relação às características de resgate, a <b>Liquidez</b> do CDB pode ser diária (ideal para reserva de emergência) "
+            "ou apenas no vencimento (oferecendo historicamente maior retorno). A tributação segue a tabela regressiva do "
+            "<b>Imposto de Renda (IR)</b>, onde o imposto diminui quanto maior o prazo do investimento (chegando a 15% após 720 dias). "
+            "O <b>Imposto sobre Operações Financeiras (IOF)</b> é isento para resgates feitos após 30 dias."
+        )
 
+    story.append(Paragraph(fundamentos_p1, styles['FundamentosStyle']))
     story.append(Spacer(1, 3*mm)) 
-
-    fundamentos_texto_p2 = (
-        "Em relação às características de resgate, a <b>Liquidez</b> do CDB pode ser diária (ideal para reserva de emergência) "
-        "ou apenas no vencimento (oferecendo historicamente maior retorno). A tributação segue a tabela regressiva do "
-        "<b>Imposto de Renda (IR)</b>, onde o imposto diminui quanto maior o prazo do investimento (chegando a 15% após 720 dias). "
-        "O <b>Imposto sobre Operações Financeiras (IOF)</b> é isento para resgates feitos após 30 dias."
-    )
-    story.append(Paragraph(fundamentos_texto_p2, styles['FundamentosStyle']))
+    story.append(Paragraph(fundamentos_p2, styles['FundamentosStyle']))
     
     story.append(Spacer(1, 5*mm)) 
     
@@ -589,11 +695,11 @@ def criar_pdf_perfeito():
     # 11. BLOCO: COMPARAÇÃO DE RESULTADOS BRUTOS
     story.append(Paragraph("COMPARATIVO DE RESULTADOS BRUTOS (No Vencimento)", styles['SectionTitle'])) 
 
-    valor_bruto_cdb = montante_bruto
+    valor_bruto_ativo = montante_bruto
     valor_bruto_cdi = bruto_cdi_graf[-1] 
     valor_bruto_poupanca = bruto_poupanca_graf[-1]
 
-    valores_comparacao = [valor_bruto_cdb, valor_bruto_cdi, valor_bruto_poupanca]
+    valores_comparacao = [valor_bruto_ativo, valor_bruto_cdi, valor_bruto_poupanca]
     max_valor = max(valores_comparacao)
     
     def formatar_valor_comparacao(valor):
@@ -602,8 +708,8 @@ def criar_pdf_perfeito():
                          ParagraphStyle(name='CompValue', alignment=1, fontName='Helvetica'))
 
     dados_comparacao = [
-        ["CDB (Simulado)", "CDI (Benchmark)", "Poupança (Benchmark)"],
-        [formatar_valor_comparacao(valor_bruto_cdb), 
+        [f"{tipo_investimento} (Simulado)", "CDI (Benchmark)", "Poupança (Benchmark)"],
+        [formatar_valor_comparacao(valor_bruto_ativo), 
          formatar_valor_comparacao(valor_bruto_cdi),
          formatar_valor_comparacao(valor_bruto_poupanca)]
     ]
@@ -652,7 +758,7 @@ if st.button("BAIXAR PROPOSTA PREMIUM", type="primary", use_container_width=True
         try:
             pdf_data = criar_pdf_perfeito()
             b64 = base64.b64encode(pdf_data).decode()
-            nome_arq = f"Proposta_CDB_{nome_cliente.replace(' ', '_')}.pdf"
+            nome_arq = f"Proposta_{tipo_investimento.replace(' ', '_')}_{nome_cliente.replace(' ', '_')}.pdf"
             href = f'<a href="data:application/pdf;base64,{b64}" download="{nome_arq}"><h3 style="text-align:center; color:white;">BAIXAR PROPOSTA PREMIUM</h3></a>'
             st.markdown(href, unsafe_allow_html=True)
             st.balloons()
